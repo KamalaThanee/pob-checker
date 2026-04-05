@@ -15,8 +15,14 @@ model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    # ใช้ path แบบระบุตำแหน่งไฟล์ให้ชัวร์ขึ้นสำหรับ Vercel
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    index_path = os.path.join(current_dir, "index.html")
+    try:
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error: index.html not found at {index_path}. Please make sure the file is in the root folder."
 
 @app.post("/api/read-image")
 async def read_image(
