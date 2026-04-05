@@ -1,16 +1,73 @@
 <!DOCTYPE html>
-<html>
-function parsePOB(data) {
-  const wb = XLSX.read(data, { type: 'binary' });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  // ปรับ range: 6 เพื่อข้ามหัวตาราง 6 แถวแรกตามไฟล์ Excel ของคุณ
-  const rows = XLSX.utils.sheet_to_json(sheet, { range: 6 }); 
-  return rows.map(r => ({
-    cabin: String(r['Cabin No.'] || '').trim(),
-    bed: String(r['Bed'] || '').trim(),
-    name: String(r['NAME'] || '').toUpperCase().trim(),
-    company: r['COMPANY'] || '',
-    muster: r['Muster No.'] || '',
-    liferaft: r['Liferaft No.'] || ''
-  })).filter(r => r.name && r.name !== 'BARGE CREW');
-}
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POB Board Checker - Kamala Thanee</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 p-5">
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-blue-600">🚢 POB Board Checker</h1>
+        
+        <div class="mb-4">
+            <label class="block font-bold mb-2">1. อัปโหลดไฟล์ POB Excel:</label>
+            <input type="file" id="excelFile" accept=".xlsx" class="w-full p-2 border rounded">
+        </div>
+
+        <div class="mb-6">
+            <label class="block font-bold mb-2">2. ถ่ายรูป/อัปโหลดรูปบอร์ด:</label>
+            <input type="file" id="imageFile" accept="image/*" class="w-full p-2 border rounded">
+        </div>
+
+        <button onclick="processData()" id="btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700">เริ่มวิเคราะห์</button>
+        
+        <div id="result" class="mt-8"></div>
+    </div>
+
+    <script>
+        let pobData = [];
+
+        document.getElementById('excelFile').onchange = function(e) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const wb = XLSX.read(e.target.result, {type:'binary'});
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {range: 6}); // เริ่มแถว 7
+                pobData = rows.map(r => String(r['NAME'] || '').toUpperCase().trim()).filter(n => n && n !== 'BARGE CREW');
+                alert('โหลดรายชื่อจาก Excel สำเร็จ!');
+            };
+            reader.readAsBinaryString(e.target.files[0]);
+        };
+
+        async function processData() {
+            const imgFile = document.getElementById('imageFile').files[0];
+            const btn = document.getElementById('btn');
+            if(!imgFile || pobData.length === 0) return alert('กรุณาเลือกไฟล์ให้ครบ');
+
+            btn.disabled = true; btn.innerText = 'กำลังประมวลผล...';
+            
+            const formData = new FormData();
+            formData.append('file', imgFile);
+            formData.append('excel_names', JSON.stringify(pobData));
+
+            const res = await fetch('/api/read-image', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            let html = '<h2 class="font-bold mb-2">ผลการเช็กรายชื่อ:</h2><ul class="space-y-1">';
+            const detectedNames = data.map(d => d.name);
+            
+            pobData.forEach(name => {
+                const found = detectedNames.includes(name);
+                html += `<li class="${found ? 'text-green-600' : 'text-red-600'}">
+                    ${found ? '✅' : '❌'} ${name}
+                </li>`;
+            });
+            html += '</ul>';
+            document.getElementById('result').innerHTML = html;
+            btn.disabled = false; btn.innerText = 'เริ่มวิเคราะห์';
+        }
+    </script>
+</body>
+</html>
