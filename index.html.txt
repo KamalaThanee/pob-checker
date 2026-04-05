@@ -1,0 +1,14 @@
+function parsePOB(data) {
+  const wb = XLSX.read(data, { type: 'binary' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  // ปรับ range: 6 เพื่อข้ามหัวตาราง 6 แถวแรกตามไฟล์ Excel ของคุณ
+  const rows = XLSX.utils.sheet_to_json(sheet, { range: 6 }); 
+  return rows.map(r => ({
+    cabin: String(r['Cabin No.'] || '').trim(),
+    bed: String(r['Bed'] || '').trim(),
+    name: String(r['NAME'] || '').toUpperCase().trim(),
+    company: r['COMPANY'] || '',
+    muster: r['Muster No.'] || '',
+    liferaft: r['Liferaft No.'] || ''
+  })).filter(r => r.name && r.name !== 'BARGE CREW');
+}
