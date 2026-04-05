@@ -3,71 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POB Board Checker - Kamala Thanee</title>
+    <title>POB Checker - Kamala Thanee</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-gray-100 p-5">
-    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md">
-        <h1 class="text-2xl font-bold mb-6 text-blue-600">🚢 POB Board Checker</h1>
+<body class="bg-slate-900 text-white p-5">
+    <div class="max-w-xl mx-auto bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-700">
+        <h1 class="text-2xl font-bold mb-6 text-center text-blue-400">🚢 POB Board Checker</h1>
         
-        <div class="mb-4">
-            <label class="block font-bold mb-2">1. อัปโหลดไฟล์ POB Excel:</label>
-            <input type="file" id="excelFile" accept=".xlsx" class="w-full p-2 border rounded">
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">1. ไฟล์ POB Excel</label>
+                <input type="file" id="excelFile" accept=".xlsx" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">2. รูปบอร์ด (เลือกได้หลายรูป)</label>
+                <input type="file" id="imageFiles" accept="image/*" multiple class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700">
+            </div>
+
+            <button onclick="processData()" id="btn" class="w-full bg-blue-500 py-3 rounded-xl font-bold text-lg hover:bg-blue-400 transition-all shadow-lg active:scale-95">วิเคราะห์ข้อมูลทั้งหมด</button>
         </div>
 
-        <div class="mb-6">
-            <label class="block font-bold mb-2">2. ถ่ายรูป/อัปโหลดรูปบอร์ด:</label>
-            <input type="file" id="imageFile" accept="image/*" class="w-full p-2 border rounded">
-            <input type="file" id="imageFile" accept="image/*" multiple class="w-full p-2 border rounded">
-        </div>
-
-        <button onclick="processData()" id="btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700">เริ่มวิเคราะห์</button>
-        
-        <div id="result" class="mt-8"></div>
+        <div id="status" class="mt-4 text-center text-sm text-blue-300"></div>
+        <div id="result" class="mt-6 space-y-2"></div>
     </div>
 
     <script>
-        let pobData = [];
+        let pobList = [];
 
         document.getElementById('excelFile').onchange = function(e) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const wb = XLSX.read(e.target.result, {type:'binary'});
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, {range: 6}); // เริ่มแถว 7
-                pobData = rows.map(r => String(r['NAME'] || '').toUpperCase().trim()).filter(n => n && n !== 'BARGE CREW');
-                alert('โหลดรายชื่อจาก Excel สำเร็จ!');
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {range: 6});
+                pobList = rows.map(r => String(r['NAME'] || '').toUpperCase().trim()).filter(n => n && n !== 'BARGE CREW');
+                document.getElementById('status').innerText = `โหลดรายชื่อสำเร็จ: ${pobList.length} คน`;
             };
-            reader.readAsBinaryString(e.target.files[0]);
+            reader.readAsArrayBuffer(e.target.files[0]);
         };
 
         async function processData() {
-            const imgFile = document.getElementById('imageFile').files[0];
+            const files = document.getElementById('imageFiles').files;
             const btn = document.getElementById('btn');
-            if(!imgFile || pobData.length === 0) return alert('กรุณาเลือกไฟล์ให้ครบ');
+            const resultDiv = document.getElementById('result');
 
-            btn.disabled = true; btn.innerText = 'กำลังประมวลผล...';
-            
+            if (files.length === 0 || pobList.length === 0) return alert('กรุณาเลือกไฟล์ Excel และรูปภาพก่อน');
+
+            btn.disabled = true;
+            btn.innerText = 'Gemini กำลังอ่านรูป...';
+            resultDiv.innerHTML = '';
+
             const formData = new FormData();
-            formData.append('file', imgFile);
-            formData.append('excel_names', JSON.stringify(pobData));
+            // วนลูปเอาทุกไฟล์ที่เลือก ใส่ลงใน FormData
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]); 
+            }
+            formData.append('excel_names', JSON.stringify(pobList));
 
-            const res = await fetch('/api/read-image', { method: 'POST', body: formData });
-            const data = await res.json();
-            
-            let html = '<h2 class="font-bold mb-2">ผลการเช็กรายชื่อ:</h2><ul class="space-y-1">';
-            const detectedNames = data.map(d => d.name);
-            
-            pobData.forEach(name => {
-                const found = detectedNames.includes(name);
-                html += `<li class="${found ? 'text-green-600' : 'text-red-600'}">
-                    ${found ? '✅' : '❌'} ${name}
-                </li>`;
-            });
-            html += '</ul>';
-            document.getElementById('result').innerHTML = html;
-            btn.disabled = false; btn.innerText = 'เริ่มวิเคราะห์';
+            try {
+                const response = await fetch('/api/read-image', { method: 'POST', body: formData });
+                const detected = await response.json();
+                const detectedNames = detected.map(d => d.name);
+
+                let html = `<div class="bg-slate-700 p-4 rounded-xl font-bold text-center">ตรวจพบ ${detectedNames.length} คน</div>`;
+                pobList.forEach(name => {
+                    const isFound = detectedNames.includes(name);
+                    html += `
+                        <div class="flex justify-between items-center p-3 rounded-lg ${isFound ? 'bg-green-900/30 border border-green-700' : 'bg-red-900/30 border border-red-700'}">
+                            <span>${name}</span>
+                            <span class="font-bold text-lg">${isFound ? '✅' : '❌'}</span>
+                        </div>`;
+                });
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                alert('เกิดข้อผิดพลาด: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'วิเคราะห์ข้อมูลทั้งหมด';
+            }
         }
     </script>
 </body>
