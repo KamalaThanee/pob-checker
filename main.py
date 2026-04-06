@@ -21,8 +21,15 @@ async def root():
 @app.post("/api/read-image")
 async def read_image(files: List[UploadFile] = File(...)):
     try:
-        # Prompt แบบสั้นพิเศษเพื่อลดการค้างและเพิ่มความเร็ว
-        instruction = "List all [CabinID][Name] from the name tags. One per line. Example: 422A CHERDCHAI"
+        # ในไฟล์ main.py ปรับปรุง Prompt ดังนี้:
+instruction = """
+ACT AS AN OCR SCANNER. 
+1. Scan every magnetic name strip on the board.
+2. Only extract: [CabinID] and [Name].
+3. FORMAT: "CabinID Name" (e.g., "422A CHERDCHAI")
+4. IGNORE: Headers, logos, or handwritten notes.
+5. IF THE NAME IS BLURRY, TRY YOUR BEST BUT KEEP THE CABIN ID.
+"""
         
         contents = [instruction]
         for file in files:
