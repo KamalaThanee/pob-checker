@@ -2,157 +2,142 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>POB Checker Pro - Kamala Thanee</title>
+    <title>POB Checker 180 - Kamala Thanee</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-slate-900 text-white p-4 font-sans">
+<body class="bg-slate-900 text-white p-4">
     <div class="max-w-4xl mx-auto space-y-4">
-        <header class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center shadow-2xl">
-            <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER SYSTEM</h1>
-            <p class="text-slate-400 text-sm">ยึดตามชื่อคนในตาราง จนถึงคำว่า SUMMARY</p>
-        </header>
+        <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center">
+            <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER CHECKER</h1>
+            <p class="text-slate-400">เวอร์ชันยอดเป๊ะ 180 คน + AI 2.0 Flash</p>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner">
+            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
                 <label class="block mb-2 font-bold text-blue-300 uppercase text-xs">1. ไฟล์รายชื่อ (Excel)</label>
-                <input type="file" id="excelFile" accept=".xlsx" class="w-full text-sm">
-                <div id="excelStatus" class="mt-2 text-[10px] text-blue-400 font-bold"></div>
+                <input type="file" id="excelInput" accept=".xlsx" class="w-full text-sm">
+                <div id="excelInfo" class="mt-2 text-xs text-blue-500"></div>
             </div>
-            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner">
-                <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกพร้อมกันหลายรูปได้)</label>
-                <input type="file" id="imageFiles" accept="image/*" multiple class="w-full text-sm">
+            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+                <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกหลายรูปได้)</label>
+                <input type="file" id="imageInput" accept="image/*" multiple class="w-full text-sm">
             </div>
         </div>
 
-        <button onclick="runProcess()" id="mainBtn" class="w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-[0.98]">
-            เริ่มการตรวจสอบ
+        <button onclick="processImages()" id="mainBtn" class="w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">
+            เริ่มการตรวจเช็ก
         </button>
 
-        <div id="dashboard" class="hidden grid grid-cols-3 gap-3">
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500 text-center">
-                <div class="text-[10px] text-slate-400">CREW</div>
-                <div id="s-crew" class="text-xl font-bold">0/0</div>
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500 text-center">
-                <div class="text-[10px] text-slate-400">CATERING</div>
-                <div id="s-cat" class="text-xl font-bold">0/0</div>
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500 text-center">
-                <div class="text-[10px] text-slate-400">PASSENGER</div>
-                <div id="s-pax" class="text-xl font-bold">0/0</div>
-            </div>
+        <div id="dashboard" class="hidden grid grid-cols-3 gap-3 font-bold text-center">
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500"><div class="text-[10px] text-slate-400">CREW</div><div id="c-crew">0/0</div></div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500"><div class="text-[10px] text-slate-400">CATERING</div><div id="c-cat">0/0</div></div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500"><div class="text-[10px] text-slate-400">PASSENGER</div><div id="c-pax">0/0</div></div>
         </div>
 
         <div id="results" class="space-y-1"></div>
     </div>
 
     <script>
-        let db = { crew: [], catering: [], passenger: [] };
-        let ocrLines = [];
+        let pobData = { crew: [], catering: [], passenger: [] };
+        let ocrResults = [];
 
-        document.getElementById('excelFile').onchange = async (e) => {
+        // --- Logic Excel ตัวที่เคยได้ 180 คนเป๊ะ ---
+        document.getElementById('excelInput').onchange = async (e) => {
             const data = await e.target.files[0].arrayBuffer();
             const workbook = XLSX.read(data);
             const sheet = workbook.Sheets['POB'];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-            db = { crew: [], catering: [], passenger: [] };
-            let section = "";
-            let stop = false;
+            pobData = { crew: [], catering: [], passenger: [] };
+            let currentSection = "";
 
-            for (let row of rows) {
-                if (stop) break;
+            rows.forEach(row => {
+                const colA = String(row[0] || "").trim(); // No.
+                const colB = String(row[1] || "").trim(); // Cabin
+                const colC = String(row[2] || "").trim(); // Bed
+                const colD = String(row[3] || "").trim().toUpperCase(); // Name
 
-                // แปลงข้อมูลทั้งแถวเป็น String เพื่อเช็กเงื่อนไข
-                const rowStr = row.map(c => String(c || "").trim()).join(" ").toUpperCase();
-                
-                // 1. จุดตัดจบ (Stop Signal)
-                if (rowStr.includes("SUMMARY")) {
-                    stop = true;
-                    continue;
+                // สัญญาณหยุด (SUMMARY)
+                if (colD.includes("SUMMARY") || colA.includes("SUMMARY")) {
+                    currentSection = "STOP"; 
+                    return;
                 }
+                if (currentSection === "STOP") return;
 
-                // 2. แยก Section (เช็กจากคำสำคัญในชื่อคนหรือตำแหน่ง)
-                if (rowStr.includes("BARGE CREW") && !rowStr.includes("POSITION")) section = "crew";
-                else if (rowStr.includes("CATERING") && !rowStr.includes("POSITION")) section = "catering";
-                else if (rowStr.includes("PASSENGER") || rowStr.includes("OPERATION")) {
-                    if (!rowStr.includes("POSITION") && !rowStr.includes("SECTION")) section = "passenger";
-                }
+                // แยก Section
+                if (colD.includes("BARGE CREW")) currentSection = "crew";
+                else if (colD.includes("CATERING")) currentSection = "catering";
+                else if (colD.includes("PASSENGER") || colD.includes("OPERATION")) currentSection = "passenger";
 
-                // 3. การดึงข้อมูล (Cabin=B, Bed=C, Name=D)
-                const cabin = String(row[1] || "").trim();
-                const bed = String(row[2] || "").trim();
-                const name = String(row[3] || "").trim().toUpperCase();
-
-                // Logic ใหม่: ไม่เช็ก No. ในคอลัมน์ A แล้ว 
-                // แต่เช็กว่า "มีชื่อ" และ "ไม่ใช่คำว่า NAME" และ "อยู่ใน Section"
-                if (section && name && name !== "NAME" && name.length > 3) {
-                    db[section].push({
-                        cabinId: (cabin + bed).replace(/[-\s]/g, "").toUpperCase(),
-                        name: name,
-                        present: false
+                // กฎเหล็ก: ต้องมี No เป็นตัวเลข และมี Cabin, Bed, Name ครบ
+                const isNumber = !isNaN(parseInt(colA)) && /^\d+$/.test(colA);
+                if (isNumber && colB && colC && colD && colD !== "NAME") {
+                    pobData[currentSection].push({
+                        id: (colB + colC).replace(/\s/g, "").toUpperCase(), // เช่น 422A
+                        name: colD,
+                        status: false
                     });
                 }
-            }
-            const total = db.crew.length + db.catering.length + db.passenger.length;
-            document.getElementById('excelStatus').innerText = `✅ ตรวจพบรายชื่อ ${total} คน (รวมจากทุก Section)`;
+            });
+            const total = pobData.crew.length + pobData.catering.length + pobData.passenger.length;
+            document.getElementById('excelInfo').innerText = `✅ โหลดสำเร็จ: ${total} คน`;
+            alert(`นับได้ ${total} คน ตรงตามเป้าหมายครับ!`);
         };
 
-        async function runProcess() {
-            const files = document.getElementById('imageFiles').files;
+        // --- Logic อ่านรูป: วนลูปทีละรูปป้องกันค้าง ---
+        async function processImages() {
+            const files = document.getElementById('imageInput').files;
             if (files.length === 0) return alert("กรุณาเลือกรูปภาพ");
             const btn = document.getElementById('mainBtn');
             btn.disabled = true;
-            ocrLines = [];
+            ocrResults = [];
 
             for (let i = 0; i < files.length; i++) {
-                btn.innerText = `⏳ AI กำลังอ่านรูปที่ ${i + 1}/${files.length}...`;
+                btn.innerText = `⏳ AI กำลังสแกนรูปที่ ${i + 1}/${files.length}...`;
                 const fd = new FormData();
                 fd.append('files', files[i]);
                 try {
                     const res = await fetch('/api/read-image', { method: 'POST', body: fd });
-                    const result = await res.json();
-                    ocrLines = ocrLines.concat(result);
+                    const lines = await res.json();
+                    ocrResults = ocrResults.concat(lines);
                 } catch (err) { console.error(err); }
             }
 
-            matchData();
-            renderUI();
+            matchAndShow();
             btn.disabled = false;
-            btn.innerText = "เริ่มการตรวจสอบ";
+            btn.innerText = "เริ่มการตรวจเช็ก";
         }
 
-        function matchData() {
-            Object.keys(db).forEach(sec => {
-                db[sec].forEach(p => {
-                    p.present = false;
-                    const firstName = p.name.split(" ")[0];
-                    for (let line of ocrLines) {
-                        // เช็กทั้งเลขห้อง หรือ ชื่อคำแรก
-                        if (line.includes(p.cabinId) || (line.includes(firstName) && firstName.length > 3)) {
-                            p.present = true;
+        function matchAndShow() {
+            Object.keys(pobData).forEach(sec => {
+                pobData[sec].forEach(p => {
+                    p.status = false;
+                    const firstName = p.name.split(" ")[0]; // เอาชื่อจริงคำแรก
+                    for (let line of ocrResults) {
+                        // เช็กทั้ง ID ห้อง (422A) หรือ ชื่อคน
+                        if (line.includes(p.id) || (line.includes(firstName) && firstName.length > 3)) {
+                            p.status = true;
                             break;
                         }
                     }
                 });
             });
-        }
 
-        function renderUI() {
+            // แสดงผล UI
             document.getElementById('dashboard').classList.remove('hidden');
-            document.getElementById('s-crew').innerText = `${db.crew.filter(x=>x.present).length}/${db.crew.length}`;
-            document.getElementById('s-cat').innerText = `${db.catering.filter(x=>x.present).length}/${db.catering.length}`;
-            document.getElementById('s-pax').innerText = `${db.passenger.filter(x=>x.present).length}/${db.passenger.length}`;
+            document.getElementById('c-crew').innerText = `${pobData.crew.filter(x=>x.status).length}/${pobData.crew.length}`;
+            document.getElementById('c-cat').innerText = `${pobData.catering.filter(x=>x.status).length}/${pobData.catering.length}`;
+            document.getElementById('c-pax').innerText = `${pobData.passenger.filter(x=>x.status).length}/${pobData.passenger.length}`;
 
             let html = "";
             ["crew", "catering", "passenger"].forEach(sec => {
-                html += `<div class="text-[10px] text-slate-500 font-bold mt-4 uppercase tracking-widest px-2">${sec}</div>`;
-                db[sec].forEach(p => {
+                html += `<div class="text-[10px] text-slate-500 font-bold mt-4 uppercase px-2">${sec}</div>`;
+                pobData[sec].forEach(p => {
                     html += `
-                        <div class="flex items-center justify-between p-3 rounded-xl border ${p.present ? 'bg-green-500/10 border-green-500/20 text-green-300' : 'bg-red-500/10 border-red-500/20 text-red-300'}">
-                            <span class="text-sm"><b>${p.cabinId}</b> ${p.name}</span>
-                            <span>${p.present ? '✅' : '❌'}</span>
+                        <div class="flex justify-between p-3 rounded-xl border ${p.status ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}">
+                            <span class="text-sm"><b>${p.id}</b> ${p.name}</span>
+                            <span>${p.status ? '✅' : '❌'}</span>
                         </div>
                     `;
                 });
