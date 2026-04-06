@@ -8,7 +8,7 @@ from typing import List
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# เปลี่ยนมาใช้ Gemini 2.0 Flash ตามที่คุณแนะนำ (เร็วกว่าและแม่นกว่ามาก)
+# ใช้ Gemini 2.0 Flash ที่เร็วและแม่นยำที่สุด
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.0-flash')
@@ -21,25 +21,28 @@ async def root():
 @app.post("/api/read-image")
 async def read_image(files: List[UploadFile] = File(...)):
     try:
-        # ในไฟล์ main.py ปรับปรุง Prompt ดังนี้:
-instruction = """
-ACT AS AN OCR SCANNER. 
-1. Scan every magnetic name strip on the board.
-2. Only extract: [CabinID] and [Name].
-3. FORMAT: "CabinID Name" (e.g., "422A CHERDCHAI")
-4. IGNORE: Headers, logos, or handwritten notes.
-5. IF THE NAME IS BLURRY, TRY YOUR BEST BUT KEEP THE CABIN ID.
-"""
+        # ปรับ Prompt ให้เข้มงวดขึ้น เพื่อให้ Matching Engine ทำงานง่าย
+        instruction = """
+        TASK: Extract all name tags from the Muster Board.
+        FORMAT: Output only [CabinID][Name] per line.
+        EXAMPLE: 
+        422ACHERDCHAI
+        D618SURIYA
+        RULES:
+        - No spaces between CabinID and Name if possible.
+        - No headers, no introductory text, no explanations.
+        - If text is unclear, provide your best guess.
+        """
         
         contents = [instruction]
         for file in files:
             image_bytes = await file.read()
             contents.append({"mime_type": file.content_type, "data": image_bytes})
         
-        # ส่งข้อมูลไปประมวลผล
         response = model.generate_content(contents)
-        # กรองเฉพาะบรรทัดที่มีข้อมูลจริงๆ
-        lines = [line.strip().upper() for line in response.text.split('\n') if len(line.strip()) > 3]
+        
+        # กรองข้อมูลและทำความสะอาดเบื้องต้น
+        lines = [line.strip().upper().replace(" ", "") for line in response.text.split('\n') if len(line.strip()) > 3]
         
         return JSONResponse(content=lines)
     except Exception as e:
