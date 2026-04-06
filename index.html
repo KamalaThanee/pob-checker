@@ -7,273 +7,215 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-900 text-white p-4">
-    <div class="max-w-4xl mx-auto space-y-4">
+<div class="max-w-4xl mx-auto space-y-4">
 
-        <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center">
-            <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER CHECKER</h1>
-            <p class="text-slate-400 text-sm mt-1">Kamala Thanee · AI-powered · Gemini 2.0 Flash</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-                <label class="block mb-2 font-bold text-blue-300 uppercase text-xs">1. ไฟล์รายชื่อ (Excel)</label>
-                <input type="file" id="excelInput" accept=".xlsx" class="w-full text-sm">
-                <div id="excelInfo" class="mt-2 text-xs text-blue-400"></div>
-            </div>
-            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-                <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกหลายรูปได้)</label>
-                <input type="file" id="imageInput" accept="image/*" multiple class="w-full text-sm">
-            </div>
-        </div>
-
-        <button onclick="processImages()" id="mainBtn"
-            class="w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">
-            เริ่มการตรวจเช็ก
-        </button>
-
-        <!-- Dashboard -->
-        <div id="dashboard" class="hidden">
-            <div class="grid grid-cols-3 gap-3 font-bold text-center mb-3">
-                <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500">
-                    <div class="text-[10px] text-slate-400 mb-1">MARINE/CREW</div>
-                    <div id="c-marine" class="text-lg">0/0</div>
-                </div>
-                <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500">
-                    <div class="text-[10px] text-slate-400 mb-1">CATERING</div>
-                    <div id="c-catering" class="text-lg">0/0</div>
-                </div>
-                <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500">
-                    <div class="text-[10px] text-slate-400 mb-1">PASSENGER/OPS</div>
-                    <div id="c-pax" class="text-lg">0/0</div>
-                </div>
-            </div>
-            <div class="bg-slate-800 p-3 rounded-xl text-xs text-slate-400 text-center" id="totalSummary"></div>
-        </div>
-
-        <!-- Debug toggle -->
-        <div id="debugBox" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-600 text-xs">
-            <div class="font-bold text-yellow-400 mb-2">🔍 Raw OCR จาก AI (debug)</div>
-            <pre id="debugText" class="text-slate-300 whitespace-pre-wrap text-[11px]"></pre>
-        </div>
-
-        <div id="results" class="space-y-1"></div>
+    <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center">
+        <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER CHECKER</h1>
+        <p class="text-slate-400 text-sm mt-1">Kamala Thanee · 180 คน · Gemini 2.0 Flash</p>
     </div>
 
-    <script>
-        // ===================== EXCEL LOADING =====================
-        let pobData = { marine: [], catering: [], passenger: [] };
-        let ocrResults = [];
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+            <label class="block mb-2 font-bold text-blue-300 uppercase text-xs">1. ไฟล์รายชื่อ (Excel)</label>
+            <input type="file" id="excelInput" accept=".xlsx" class="w-full text-sm">
+            <div id="excelInfo" class="mt-2 text-xs text-blue-400"></div>
+        </div>
+        <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+            <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกหลายรูปได้)</label>
+            <input type="file" id="imageInput" accept="image/*" multiple class="w-full text-sm">
+        </div>
+    </div>
 
-        document.getElementById('excelInput').onchange = async (e) => {
-            const data = await e.target.files[0].arrayBuffer();
-            const wb = XLSX.read(data);
-            const ws = wb.Sheets['POB'];
-            if (!ws) return alert('ไม่พบ Sheet ชื่อ "POB"');
-            const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    <button onclick="processImages()" id="mainBtn"
+        class="w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">
+        เริ่มการตรวจเช็ก
+    </button>
 
-            pobData = { marine: [], catering: [], passenger: [] };
-            let currentSection = "";
+    <div id="dashboard" class="hidden space-y-3">
+        <div class="grid grid-cols-3 gap-3 font-bold text-center">
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500">
+                <div class="text-[10px] text-slate-400 mb-1">MARINE CREW</div>
+                <div id="c-marine" class="text-xl">0/0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500">
+                <div class="text-[10px] text-slate-400 mb-1">CATERING CREW</div>
+                <div id="c-catering" class="text-xl">0/0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500">
+                <div class="text-[10px] text-slate-400 mb-1">PASSENGER</div>
+                <div id="c-pax" class="text-xl">0/0</div>
+            </div>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-xl text-sm font-bold text-center" id="totalSummary"></div>
+    </div>
 
-            rows.forEach(row => {
-                const colA = String(row[0] || "").trim();
-                const colB = String(row[1] || "").trim();   // Cabin No. e.g. "B-401"
-                const colC = String(row[2] || "").trim();   // Bed e.g. "A"
-                const colD = String(row[3] || "").trim().toUpperCase(); // Name
-                const colI = String(row[8] || "").trim().toUpperCase(); // Section
+    <div id="debugBox" class="hidden bg-slate-800 p-4 rounded-xl border border-yellow-700">
+        <div class="flex justify-between items-center mb-2">
+            <span class="font-bold text-yellow-400 text-xs">🔍 Raw OCR จาก AI (debug)</span>
+            <span id="ocrCount" class="text-xs text-slate-400"></span>
+        </div>
+        <pre id="debugText" class="text-slate-300 whitespace-pre-wrap text-[11px] max-h-48 overflow-y-auto"></pre>
+    </div>
 
-                // Stop at SUMMARY or HOT BED sections
-                if (colD.includes("HOT BED") || colD.includes("ONE DAY") || colD.includes("SUMMARY")) {
-                    currentSection = "STOP";
-                    return;
-                }
-                if (currentSection === "STOP") return;
+    <div id="results" class="space-y-1"></div>
+</div>
 
-                // Section headers
-                if (colD === "BARGE CREW" || colD === "MARINE") currentSection = "marine";
-                else if (colD === "CATERING") currentSection = "catering";
-                else if (colD.includes("PASSENGER") || colD.includes("OPERATION")) currentSection = "passenger";
+<script>
+let pobData = { marine: [], catering: [], passenger: [] };
+let ocrResults = [];
 
-                // Valid data rows: No. must be integer, must have Cabin + Bed + Name
-                const isNum = /^\d+$/.test(colA);
-                if (!isNum || !colB || !colC || !colD || colD === "BARGE CREW" || colD === "CATERING" || colD === "NAME") return;
-                if (colD === "MARINE" || colD === "PASSENGER" || colD === "SECTION") return;
+// ===================== LOAD EXCEL =====================
+document.getElementById('excelInput').onchange = async (e) => {
+    const buf = await e.target.files[0].arrayBuffer();
+    const wb = XLSX.read(buf);
+    const ws = wb.Sheets['POB'];
+    if (!ws) return alert('ไม่พบ Sheet ชื่อ "POB"');
 
-                // Determine section from colI (more reliable)
-                let sec = currentSection;
-                if (colI === "MARINE") sec = "marine";
-                else if (colI === "CATERING") sec = "catering";
-                else if (colI === "OPERATION" || colI === "E505") sec = "passenger";
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    pobData = { marine: [], catering: [], passenger: [] };
 
-                if (!sec || sec === "STOP") return;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const colA = String(row[0] || '').trim();
+        const colB = String(row[1] || '').trim();   // Cabin No.
+        const colC = String(row[2] || '').trim();   // Bed
+        const colD = String(row[3] || '').trim().toUpperCase(); // Name
+        const colG = String(row[6] || '').trim().toUpperCase(); // Department
 
-                const cabinId = colB.toUpperCase().replace(/\s/g, ""); // "B-401"
-                const bed = colC.toUpperCase();                          // "A"
-                const cabinBed = cabinId + bed;                          // "B-401A"
+        // หยุดเมื่อเจอ HOT BED หรือ SUMMARY
+        if (colD.includes('HOT BED') || colD.includes('ONE DAY') || colA === 'SUMMARY') break;
 
-                // Name: take first two tokens (e.g. "AKARANET SAENGMANEE" → first="AKARANET")
-                const nameParts = colD.split(/\s+/);
-                const firstName = nameParts[0];
-                const firstTwoChars = nameParts.map(p => p.substring(0, 2)).join("");
+        // ต้องมี No. เป็นตัวเลข, Cabin, Bed, Name
+        if (!/^\d+$/.test(colA)) continue;
+        if (!colB || !colC || !colD) continue;
+        if (['NAME', 'BARGE CREW', 'CATERING', 'PASSENGER', 'SECTION'].includes(colD)) continue;
 
-                pobData[sec].push({
-                    cabin: cabinId,     // "B-401"
-                    bed: bed,           // "A"
-                    cabinBed: cabinBed, // "B-401A"
-                    name: colD,         // "AKARANET SAENGMANEE"
-                    firstName: firstName,
-                    status: false,
-                    matchedBy: ""
-                });
-            });
+        const cabinId  = colB.toUpperCase().replace(/\s/g, '');
+        const bed      = colC.toUpperCase();
+        const cabinBed = cabinId + bed;
 
-            const total = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
-            document.getElementById('excelInfo').innerText = `✅ โหลดสำเร็จ: Marine=${pobData.marine.length}, Catering=${pobData.catering.length}, Passenger=${pobData.passenger.length} (รวม ${total} คน)`;
-        };
+        // แยกประเภทด้วย Column G (Department)
+        let sec;
+        if (colG === 'MARINE CREW')   sec = 'marine';
+        else if (colG === 'CATERING CREW') sec = 'catering';
+        else                               sec = 'passenger';
 
-        // ===================== IMAGE PROCESSING =====================
-        async function processImages() {
-            const files = document.getElementById('imageInput').files;
-            if (files.length === 0) return alert("กรุณาเลือกรูปภาพ");
-            if (pobData.marine.length + pobData.catering.length + pobData.passenger.length === 0)
-                return alert("กรุณาโหลดไฟล์ Excel ก่อน");
+        pobData[sec].push({ cabin: cabinId, bed, cabinBed, name: colD, status: false, matchedBy: '' });
+    }
 
-            const btn = document.getElementById('mainBtn');
-            btn.disabled = true;
-            ocrResults = [];
-            let allRaw = [];
+    const t = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
+    document.getElementById('excelInfo').innerText =
+        `✅ Marine: ${pobData.marine.length} | Catering: ${pobData.catering.length} | Passenger: ${pobData.passenger.length} | รวม ${t} คน`;
+};
 
-            for (let i = 0; i < files.length; i++) {
-                btn.innerText = `⏳ AI สแกนรูปที่ ${i + 1}/${files.length}...`;
-                const fd = new FormData();
-                fd.append('files', files[i]);
-                try {
-                    const res = await fetch('/api/read-image', { method: 'POST', body: fd });
-                    const data = await res.json();
-                    if (data.parsed) ocrResults = ocrResults.concat(data.parsed);
-                    if (data.raw) allRaw.push(`--- รูปที่ ${i+1} ---\n${data.raw}`);
-                } catch (err) {
-                    allRaw.push(`--- รูปที่ ${i+1} ERROR: ${err} ---`);
-                }
+// ===================== SCAN IMAGES =====================
+async function processImages() {
+    const files = document.getElementById('imageInput').files;
+    if (!files.length) return alert('กรุณาเลือกรูปภาพ');
+    const total = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
+    if (!total) return alert('กรุณาโหลดไฟล์ Excel ก่อน');
+
+    const btn = document.getElementById('mainBtn');
+    btn.disabled = true;
+    ocrResults = [];
+    let allRaw = [];
+
+    for (let i = 0; i < files.length; i++) {
+        btn.innerText = `⏳ AI สแกนรูปที่ ${i + 1}/${files.length}...`;
+        const fd = new FormData();
+        fd.append('files', files[i]);
+        try {
+            const res = await fetch('/api/read-image', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.error) {
+                allRaw.push(`❌ รูปที่ ${i+1} ERROR: ${data.error}`);
+            } else {
+                if (data.parsed) ocrResults = ocrResults.concat(data.parsed);
+                if (data.raw) allRaw.push(`--- รูปที่ ${i+1} (${data.parsed?.length || 0} tags) ---\n${data.raw}`);
             }
-
-            // Show debug
-            document.getElementById('debugBox').classList.remove('hidden');
-            document.getElementById('debugText').textContent = allRaw.join('\n\n') + '\n\n--- Parsed ---\n' +
-                ocrResults.map(r => `cabin=${r.cabin} bed=${r.bed} tag="${r.name_tag}"`).join('\n');
-
-            matchAndShow();
-            btn.disabled = false;
-            btn.innerText = "เริ่มการตรวจเช็กอีกครั้ง";
+        } catch (err) {
+            allRaw.push(`❌ รูปที่ ${i+1} FETCH ERROR: ${err}`);
         }
+    }
 
-        // ===================== MATCHING =====================
-        function levenshtein(a, b) {
-            const m = a.length, n = b.length;
-            const dp = Array.from({length: m+1}, (_, i) => [i, ...Array(n).fill(0)]);
-            for (let j = 0; j <= n; j++) dp[0][j] = j;
-            for (let i = 1; i <= m; i++)
-                for (let j = 1; j <= n; j++)
-                    dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] :
-                        1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
-            return dp[m][n];
-        }
+    document.getElementById('debugBox').classList.remove('hidden');
+    document.getElementById('ocrCount').innerText = `อ่านได้ ${ocrResults.length} tags`;
+    document.getElementById('debugText').textContent = allRaw.join('\n\n');
 
-        function fuzzyMatch(str1, str2) {
-            if (!str1 || !str2) return false;
-            const s1 = str1.toUpperCase(), s2 = str2.toUpperCase();
-            if (s1.includes(s2) || s2.includes(s1)) return true;
-            // Allow 1 character difference for short strings, 2 for longer
-            const maxDist = s1.length <= 5 ? 1 : 2;
-            return levenshtein(s1, s2) <= maxDist;
-        }
+    matchAndShow();
+    btn.disabled = false;
+    btn.innerText = 'เริ่มการตรวจเช็กอีกครั้ง';
+}
 
-        function matchAndShow() {
-            Object.keys(pobData).forEach(sec => {
-                pobData[sec].forEach(p => {
-                    p.status = false;
-                    p.matchedBy = "";
+// ===================== MATCHING =====================
+function matchAndShow() {
+    // สร้าง Set ของ cabinBed ที่ AI อ่านได้จากรูป เช่น "B-401A"
+    const ocrSet = new Set();
+    for (const ocr of ocrResults) {
+        if (ocr.cabin_bed) ocrSet.add(ocr.cabin_bed.toUpperCase().replace(/\s/g, ''));
+        if (ocr.cabin && ocr.bed) ocrSet.add((ocr.cabin + ocr.bed).toUpperCase().replace(/\s/g, ''));
+    }
 
-                    for (let ocr of ocrResults) {
-                        // Strategy 1: Exact cabin+bed match (most reliable)
-                        // Excel: "B-401A", OCR parsed: cabin="B-401", bed="A"
-                        if (ocr.cabin === p.cabin && ocr.bed === p.bed) {
-                            p.status = true;
-                            p.matchedBy = `cabin: ${ocr.cabin}${ocr.bed}`;
-                            break;
-                        }
+    Object.keys(pobData).forEach(sec => {
+        pobData[sec].forEach(p => {
+            p.status = false;
+            p.matchedBy = '';
+            const key = p.cabinBed.toUpperCase().replace(/\s/g, '');
+            if (ocrSet.has(key)) {
+                p.status = true;
+                p.matchedBy = p.cabinBed;
+            }
+        });
+    });
 
-                        // Strategy 2: cabin_bed string match
-                        if (ocr.cabin_bed === p.cabinBed) {
-                            p.status = true;
-                            p.matchedBy = `cabin_bed: ${ocr.cabin_bed}`;
-                            break;
-                        }
+    renderUI();
+}
 
-                        // Strategy 3: Name tag matches first name (fuzzy)
-                        // Tag shows abbreviated: "AKARANET SA" vs full name "AKARANET SAENGMANEE"
-                        if (p.firstName && p.firstName.length >= 4) {
-                            const tagName = ocr.name_tag || "";
-                            // Check if tag starts with firstName (common abbreviation pattern)
-                            if (tagName.startsWith(p.firstName.substring(0, 5))) {
-                                p.status = true;
-                                p.matchedBy = `name: ${tagName}`;
-                                break;
-                            }
-                            // Fuzzy: tag name contains enough of first name
-                            if (fuzzyMatch(p.firstName, tagName.split(" ")[0])) {
-                                p.status = true;
-                                p.matchedBy = `fuzzy: ${tagName}`;
-                                break;
-                            }
-                        }
-                    }
-                });
-            });
+// ===================== RENDER =====================
+function renderUI() {
+    document.getElementById('dashboard').classList.remove('hidden');
 
-            renderUI();
-        }
+    const mOK  = pobData.marine.filter(x => x.status).length;
+    const cOK  = pobData.catering.filter(x => x.status).length;
+    const pOK  = pobData.passenger.filter(x => x.status).length;
+    const tOK  = mOK + cOK + pOK;
+    const tAll = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
 
-        // ===================== RENDER UI =====================
-        function renderUI() {
-            document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('c-marine').innerText   = `${mOK}/${pobData.marine.length}`;
+    document.getElementById('c-catering').innerText = `${cOK}/${pobData.catering.length}`;
+    document.getElementById('c-pax').innerText      = `${pOK}/${pobData.passenger.length}`;
+    document.getElementById('totalSummary').innerHTML =
+        `รวม: <span class="text-green-400">${tOK}</span>/${tAll} คน &nbsp;|&nbsp; ขาด: <span class="text-red-400">${tAll - tOK}</span> คน`;
 
-            const marineOK = pobData.marine.filter(x => x.status).length;
-            const catOK = pobData.catering.filter(x => x.status).length;
-            const paxOK = pobData.passenger.filter(x => x.status).length;
-            const totalOK = marineOK + catOK + paxOK;
-            const totalAll = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
+    const sections = [
+        { key: 'marine',    label: 'MARINE CREW' },
+        { key: 'catering',  label: 'CATERING CREW' },
+        { key: 'passenger', label: 'PASSENGER / OPERATION' }
+    ];
 
-            document.getElementById('c-marine').innerText = `${marineOK}/${pobData.marine.length}`;
-            document.getElementById('c-catering').innerText = `${catOK}/${pobData.catering.length}`;
-            document.getElementById('c-pax').innerText = `${paxOK}/${pobData.passenger.length}`;
-            document.getElementById('totalSummary').innerText = `รวมทั้งหมด: ${totalOK}/${totalAll} คน  |  ขาด: ${totalAll - totalOK} คน`;
+    let html = '';
+    sections.forEach(({ key, label }) => {
+        const absent  = pobData[key].filter(x => !x.status);
+        const present = pobData[key].filter(x => x.status);
 
-            const sections = [
-                { key: 'marine', label: 'MARINE / BARGE CREW', color: 'blue' },
-                { key: 'catering', label: 'CATERING', color: 'purple' },
-                { key: 'passenger', label: 'PASSENGER / OPERATION', color: 'orange' }
-            ];
+        html += `<div class="text-[11px] text-slate-400 font-bold mt-5 mb-2 uppercase px-1">
+            ${label} — ✅ ${present.length} &nbsp; ❌ ขาด ${absent.length}
+        </div>`;
 
-            let html = "";
-            sections.forEach(({ key, label, color }) => {
-                const absent = pobData[key].filter(x => !x.status);
-                const present = pobData[key].filter(x => x.status);
-                html += `<div class="text-[11px] text-slate-400 font-bold mt-5 mb-2 uppercase px-1">${label} — ขาด ${absent.length} คน</div>`;
+        [...absent, ...present].forEach(p => {
+            const cls = p.status
+                ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                : 'bg-red-500/10 border-red-500/30 text-red-300';
+            html += `
+            <div class="flex justify-between items-center p-3 rounded-xl border ${cls} mb-1">
+                <span class="text-sm"><b>${p.cabinBed}</b> &nbsp;${p.name}</span>
+                <span>${p.status ? '✅' : '❌'}</span>
+            </div>`;
+        });
+    });
 
-                // Show absent first (red), then present (green)
-                [...absent, ...present].forEach(p => {
-                    const bg = p.status ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-300';
-                    const hint = p.matchedBy ? `<span class="text-[9px] text-slate-500 ml-2">(${p.matchedBy})</span>` : '';
-                    html += `
-                        <div class="flex justify-between items-center p-3 rounded-xl border ${bg} mb-1">
-                            <span class="text-sm"><b>${p.cabinBed}</b> ${p.name}${hint}</span>
-                            <span class="text-lg">${p.status ? '✅' : '❌'}</span>
-                        </div>`;
-                });
-            });
-
-            document.getElementById('results').innerHTML = html;
-        }
-    </script>
+    document.getElementById('results').innerHTML = html;
+}
+</script>
 </body>
 </html>
