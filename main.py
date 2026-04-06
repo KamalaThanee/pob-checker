@@ -4,92 +4,92 @@ import base64
 import httpx
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+
+HTML_PATH = Path(__file__).parent / "index.html"
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    return HTMLResponse(content=HTML_PATH.read_text(encoding="utf-8"))
 
 @app.post("/api/read-image")
 async def read_image(files: List[UploadFile] = File(...)):
+    if not GEMINI_API_KEY:
+        return JSONResponse(status_code=500, content={"error": "GEMINI_API_KEY not set"})
+
     try:
-        instruction = """
-You are an OCR system reading yellow magnetic name tags on a muster board.
+        prompt = """You are an OCR system reading yellow magnetic name tags on a muster board.
 
-Each tag contains two white label strips side by side:
-- LEFT strip: Cabin ID in format like "2 LR-1 B401A" or "2 LR-5 B422B"
-- RIGHT strip: Person's name (abbreviated), like "AKARANET SA" or "NATTAWUT SI"
+Each tag has two white label strips:
+- LEFT strip: Cabin ID, e.g. "2 LR-1 B401A" or "2 LR-5 B422B"
+- RIGHT strip: Abbreviated name, e.g. "AKARANET SA" or "NATTAWUT SI"
 
-Your task: Extract EVERY tag you can see. Output one tag per line.
-
-Output format (strict):
+Extract EVERY tag visible. Output one tag per line in this exact format:
 CABIN_ID|NAME
 
 Rules:
-- CABIN_ID: copy exactly as printed, e.g. "2 LR-1 B401A"
-- NAME: copy exactly as printed, e.g. "AKARANET SA"
-- Separator is the pipe character |
-- One entry per line
-- Do NOT include headers, summaries, board numbers, or any other text
-- If a name is partially cut off, include what you can read
+- Copy CABIN_ID exactly as printed
+- Copy NAME exactly as printed
+- Use pipe | as separator
+- One line per tag
+- Skip board section numbers (1,2,3...) and headers
 
 Example output:
 2 LR-1 B401A|AKARANET SA
 2 LR-1 B401B|NOPPHAKORN YI
-2 LR-1 B401C|ADISAK PO
-2 LR-5 B422B|NATTAWUT SI
-"""
+2 LR-5 B422B|NATTAWUT SI"""
 
-        contents = [instruction]
+        parts = [{"text": prompt}]
         for file in files:
             image_bytes = await file.read()
-            contents.append({"mime_type": file.content_type, "data": image_bytes})
+            b64 = base64.b64encode(image_bytes).decode("utf-8")
+            parts.append({"inline_data": {"mime_type": file.content_type or "image/jpeg", "data": b64}})
 
-        response = model.generate_content(contents)
-        raw_text = response.text.strip()
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
+        }
 
-        # Parse each line into structured objects
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(f"{GEMINI_URL}?key={GEMINI_API_KEY}", json=payload)
+
+        if resp.status_code != 200:
+            return JSONResponse(status_code=500, content={"error": f"Gemini error {resp.status_code}: {resp.text[:300]}"})
+
+        raw_text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+
         results = []
-        for line in raw_text.split('\n'):
+        for line in raw_text.split("\n"):
             line = line.strip()
-            if '|' not in line:
+            if "|" not in line:
                 continue
-            parts = line.split('|', 1)
-            if len(parts) != 2:
-                continue
-            cabin_raw = parts[0].strip().upper()
-            name_raw = parts[1].strip().upper()
-
-            # Extract the B-number part from cabin tag
-            # e.g. "2 LR-1 B401A" → cabin="B-401", bed="A"
-            m = re.search(r'B[- ]?(\d+)([A-D])\b', cabin_raw)
+            cabin_raw, _, name_raw = line.partition("|")
+            cabin_raw = cabin_raw.strip().upper()
+            name_raw = name_raw.strip().upper()
+            m = re.search(r'B-?(\d+)([A-D])\b', cabin_raw)
             if m:
-                cabin_num = m.group(1)   # e.g. "401"
-                bed_letter = m.group(2)   # e.g. "A"
-                cabin_id = f"B-{cabin_num}"  # e.g. "B-401"
-                cabin_bed = f"{cabin_id}{bed_letter}"  # e.g. "B-401A"
+                cabin_id = f"B-{m.group(1)}"
+                bed_letter = m.group(2)
+                cabin_bed = f"{cabin_id}{bed_letter}"
             else:
-                # Fallback: use raw text as-is
-                cabin_id = cabin_raw
-                bed_letter = ""
-                cabin_bed = cabin_raw
-
-            results.append({
-                "raw": line,
-                "cabin": cabin_id,        # "B-401"
-                "bed": bed_letter,         # "A"
-                "cabin_bed": cabin_bed,    # "B-401A"
-                "name_tag": name_raw       # "AKARANET SA"
-            })
+                cabin_id, bed_letter, cabin_bed = cabin_raw, "", cabin_raw
+            results.append({"raw": line, "cabin": cabin_id, "bed": bed_letter, "cabin_bed": cabin_bed, "name_tag": name_raw})
 
         return JSONResponse(content={"parsed": results, "raw": raw_text})
 
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        import traceback
+        return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
