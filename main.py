@@ -1,10 +1,8 @@
 import os
-import json
 import google.generativeai as genai
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fuzzywuzzy import fuzz, process
 from typing import List
 
 app = FastAPI()
@@ -12,7 +10,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 genai.configure(api_key=GEMINI_API_KEY)
-# ใช้ Model Flash 1.5 เพราะอ่านตัวอักษรจากภาพได้แม่นที่สุด
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.get("/", response_class=HTMLResponse)
@@ -23,15 +20,14 @@ async def root():
         return HTMLResponse(content=f.read())
 
 @app.post("/api/read-image")
-async def read_image(files: List[UploadFile] = File(...), excel_names: str = Form("[]")):
+async def read_image(files: List[UploadFile] = File(...)):
     try:
-        # ปรับคำสั่งให้ AI โฟกัสที่ชื่อภาษาอังกฤษบนบอร์ด Muster
+        # สั่งให้ AI กวาดข้อความบนป้ายมาทั้งหมด (ทั้งเลขห้องและชื่อ) บรรทัดละ 1 ป้าย
         instruction = """
-        Extract ALL English names from these Muster Board images. 
-        - Look for names on the magnetic strips or labels.
-        - Ignore headers, titles, or numbers.
-        - Return ONLY a JSON array of objects: [{"name": "FULL NAME"}]
-        - If no names found, return [].
+        Read all the text on the muster board magnetic strips or cards.
+        Return the text line by line exactly as you see it. 
+        Include both Cabin Numbers and Names (e.g. '401A SURIYA' or '401 SURIYA').
+        Do not format as JSON.
         """
         
         content_to_send = [instruction]
@@ -40,22 +36,10 @@ async def read_image(files: List[UploadFile] = File(...), excel_names: str = For
             content_to_send.append({"mime_type": file.content_type, "data": image_bytes})
         
         response = model.generate_content(content_to_send)
-        clean_json = response.text.strip().replace("```json", "").replace("```", "")
-        ai_data = json.loads(clean_json)
         
-        excel_list = json.loads(excel_names)
-        results = []
-
-        if excel_list:
-            for item in ai_data:
-                raw_name = str(item["name"]).upper().strip()
-                # ใช้ Fuzzy Matching เพื่อเทียบชื่อที่ AI อ่านเพี้ยน กับชื่อจริงใน Excel
-                match, score = process.extractOne(raw_name, excel_list, scorer=fuzz.token_sort_ratio)
-                if score >= 70: # ปรับความยืดหยุ่นลงเหลือ 70 เพื่อให้ดึงข้อมูลง่ายขึ้น
-                    results.append({"name": match})
-                else:
-                    results.append({"name": raw_name}) # ถ้าไม่เจอใน Excel ให้เอาชื่อดิบที่อ่านได้มาแสดง
-                    
-        return JSONResponse(content=results)
+        # คืนค่ากลับไปเป็น List ของข้อความดิบๆ ที่ AI อ่านได้
+        ai_lines = [line.strip().upper() for line in response.text.strip().split('\n') if len(line.strip()) > 1]
+        
+        return JSONResponse(content=ai_lines)
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
