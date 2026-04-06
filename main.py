@@ -93,3 +93,15 @@ Example output:
     except Exception as e:
         import traceback
         return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
+
+@app.get("/api/test-key")
+async def test_key():
+    import httpx
+    if not GEMINI_API_KEY:
+        return {"status": "ERROR", "reason": "GEMINI_API_KEY is empty"}
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            json={"contents": [{"parts": [{"text": "say hello"}]}]}
+        )
+    return {"status": resp.status_code, "body": resp.json()}
