@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>POB Checker Pro</title>
+    <title>POB Checker Pro - Kamala Thanee</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -10,36 +10,36 @@
     <div class="max-w-4xl mx-auto space-y-4">
         <header class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center shadow-2xl">
             <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER SYSTEM</h1>
-            <p class="text-slate-400 text-sm">Kamala Thanee | Stop Signal: SUMMARY</p>
+            <p class="text-slate-400 text-sm">ยึดตามชื่อคนในตาราง จนถึงคำว่า SUMMARY</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner">
                 <label class="block mb-2 font-bold text-blue-300 uppercase text-xs">1. ไฟล์รายชื่อ (Excel)</label>
-                <input type="file" id="excelFile" accept=".xlsx" class="w-full text-sm file:bg-blue-600 file:text-white file:rounded-full file:border-0 file:px-4 file:py-1">
-                <div id="excelStatus" class="mt-2 text-[10px] text-slate-500 italic">กรุณาเลือกไฟล์...</div>
+                <input type="file" id="excelFile" accept=".xlsx" class="w-full text-sm">
+                <div id="excelStatus" class="mt-2 text-[10px] text-blue-400 font-bold"></div>
             </div>
-            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-                <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกพร้อมกันได้)</label>
-                <input type="file" id="imageFiles" accept="image/*" multiple class="w-full text-sm file:bg-green-600 file:text-white file:rounded-full file:border-0 file:px-4 file:py-1">
+            <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner">
+                <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกพร้อมกันหลายรูปได้)</label>
+                <input type="file" id="imageFiles" accept="image/*" multiple class="w-full text-sm">
             </div>
         </div>
 
-        <button onclick="runProcess()" id="mainBtn" class="w-full py-5 bg-blue-500 hover:bg-blue-400 rounded-2xl font-black text-xl shadow-lg active:scale-[0.98] transition-all disabled:bg-slate-700">
+        <button onclick="runProcess()" id="mainBtn" class="w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-[0.98]">
             เริ่มการตรวจสอบ
         </button>
 
         <div id="dashboard" class="hidden grid grid-cols-3 gap-3">
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500 text-center shadow-lg">
-                <div class="text-[10px] text-slate-400 uppercase">Crew</div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500 text-center">
+                <div class="text-[10px] text-slate-400">CREW</div>
                 <div id="s-crew" class="text-xl font-bold">0/0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500 text-center shadow-lg">
-                <div class="text-[10px] text-slate-400 uppercase">Catering</div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500 text-center">
+                <div class="text-[10px] text-slate-400">CATERING</div>
                 <div id="s-cat" class="text-xl font-bold">0/0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500 text-center shadow-lg">
-                <div class="text-[10px] text-slate-400 uppercase">Passenger</div>
+            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500 text-center">
+                <div class="text-[10px] text-slate-400">PASSENGER</div>
                 <div id="s-pax" class="text-xl font-bold">0/0</div>
             </div>
         </div>
@@ -51,14 +51,12 @@
         let db = { crew: [], catering: [], passenger: [] };
         let ocrLines = [];
 
-        // --- 1. อ่าน Excel (Logic: Stop at SUMMARY) ---
         document.getElementById('excelFile').onchange = async (e) => {
             const data = await e.target.files[0].arrayBuffer();
             const workbook = XLSX.read(data);
             const sheet = workbook.Sheets['POB'];
-            if (!sheet) return alert("ไม่พบ Sheet 'POB'");
-
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
             db = { crew: [], catering: [], passenger: [] };
             let section = "";
             let stop = false;
@@ -66,28 +64,30 @@
             for (let row of rows) {
                 if (stop) break;
 
-                // รวมข้อความทั้งแถวเพื่อหา Stop Signal หรือ Section
-                const rowText = row.join(" ").toUpperCase();
+                // แปลงข้อมูลทั้งแถวเป็น String เพื่อเช็กเงื่อนไข
+                const rowStr = row.map(c => String(c || "").trim()).join(" ").toUpperCase();
                 
-                // สัญญาณหยุด (SUMMARY)
-                if (rowText.includes("SUMMARY")) {
+                // 1. จุดตัดจบ (Stop Signal)
+                if (rowStr.includes("SUMMARY")) {
                     stop = true;
                     continue;
                 }
 
-                // การแยก Section
-                if (rowText.includes("BARGE CREW") && !rowText.includes("POSITION")) section = "crew";
-                else if (rowText.includes("CATERING") && !rowText.includes("POSITION")) section = "catering";
-                else if ((rowText.includes("PASSENGER") || rowText.includes("OPERATION")) && !rowText.includes("POSITION")) section = "passenger";
+                // 2. แยก Section (เช็กจากคำสำคัญในชื่อคนหรือตำแหน่ง)
+                if (rowStr.includes("BARGE CREW") && !rowStr.includes("POSITION")) section = "crew";
+                else if (rowStr.includes("CATERING") && !rowStr.includes("POSITION")) section = "catering";
+                else if (rowStr.includes("PASSENGER") || rowStr.includes("OPERATION")) {
+                    if (!rowStr.includes("POSITION") && !rowStr.includes("SECTION")) section = "passenger";
+                }
 
-                // ดึงข้อมูลคน (คอลัมน์ B=Cabin, C=Bed, D=Name)
+                // 3. การดึงข้อมูล (Cabin=B, Bed=C, Name=D)
                 const cabin = String(row[1] || "").trim();
                 const bed = String(row[2] || "").trim();
                 const name = String(row[3] || "").trim().toUpperCase();
-                const no = parseInt(row[0]);
 
-                // ต้องมีหมายเลขลำดับ (No.) และมีเลขห้อง + ชื่อ ถึงจะนับ
-                if (section && !isNaN(no) && cabin && name && name !== "NAME") {
+                // Logic ใหม่: ไม่เช็ก No. ในคอลัมน์ A แล้ว 
+                // แต่เช็กว่า "มีชื่อ" และ "ไม่ใช่คำว่า NAME" และ "อยู่ใน Section"
+                if (section && name && name !== "NAME" && name.length > 3) {
                     db[section].push({
                         cabinId: (cabin + bed).replace(/[-\s]/g, "").toUpperCase(),
                         name: name,
@@ -96,28 +96,25 @@
                 }
             }
             const total = db.crew.length + db.catering.length + db.passenger.length;
-            document.getElementById('excelStatus').innerText = `✅ โหลดสำเร็จ: ${total} คน (Stop signal active)`;
+            document.getElementById('excelStatus').innerText = `✅ ตรวจพบรายชื่อ ${total} คน (รวมจากทุก Section)`;
         };
 
-        // --- 2. เรียก AI (Anti-Freeze & Gemini 2.0 Flash) ---
         async function runProcess() {
             const files = document.getElementById('imageFiles').files;
             if (files.length === 0) return alert("กรุณาเลือกรูปภาพ");
-
             const btn = document.getElementById('mainBtn');
             btn.disabled = true;
             ocrLines = [];
 
             for (let i = 0; i < files.length; i++) {
-                btn.innerText = `⏳ สแกนรูปที่ ${i + 1}/${files.length}...`;
+                btn.innerText = `⏳ AI กำลังอ่านรูปที่ ${i + 1}/${files.length}...`;
                 const fd = new FormData();
                 fd.append('files', files[i]);
-
                 try {
                     const res = await fetch('/api/read-image', { method: 'POST', body: fd });
                     const result = await res.json();
                     ocrLines = ocrLines.concat(result);
-                } catch (err) { console.error("Error:", err); }
+                } catch (err) { console.error(err); }
             }
 
             matchData();
@@ -126,14 +123,14 @@
             btn.innerText = "เริ่มการตรวจสอบ";
         }
 
-        // --- 3. Matching Engine ---
         function matchData() {
             Object.keys(db).forEach(sec => {
                 db[sec].forEach(p => {
                     p.present = false;
+                    const firstName = p.name.split(" ")[0];
                     for (let line of ocrLines) {
-                        // เช็กทั้ง CabinId (422A) หรือ ชื่อบางส่วน
-                        if (line.includes(p.cabinId) || (line.includes(p.name.split(" ")[0]) && p.name.length > 3)) {
+                        // เช็กทั้งเลขห้อง หรือ ชื่อคำแรก
+                        if (line.includes(p.cabinId) || (line.includes(firstName) && firstName.length > 3)) {
                             p.present = true;
                             break;
                         }
@@ -142,7 +139,6 @@
             });
         }
 
-        // --- 4. Render UI ---
         function renderUI() {
             document.getElementById('dashboard').classList.remove('hidden');
             document.getElementById('s-crew').innerText = `${db.crew.filter(x=>x.present).length}/${db.crew.length}`;
@@ -155,8 +151,8 @@
                 db[sec].forEach(p => {
                     html += `
                         <div class="flex items-center justify-between p-3 rounded-xl border ${p.present ? 'bg-green-500/10 border-green-500/20 text-green-300' : 'bg-red-500/10 border-red-500/20 text-red-300'}">
-                            <span class="text-sm font-medium"><b class="bg-slate-900 px-2 py-0.5 rounded mr-2">${p.cabinId}</b> ${p.name}</span>
-                            <span class="text-lg">${p.present ? '✅' : '❌'}</span>
+                            <span class="text-sm"><b>${p.cabinId}</b> ${p.name}</span>
+                            <span>${p.present ? '✅' : '❌'}</span>
                         </div>
                     `;
                 });
