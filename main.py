@@ -8,10 +8,10 @@ from typing import List
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ตั้งค่า Gemini
+# เปลี่ยนมาใช้ Gemini 2.0 Flash ตามที่คุณแนะนำ (เร็วกว่าและแม่นกว่ามาก)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash')
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -21,25 +21,19 @@ async def root():
 @app.post("/api/read-image")
 async def read_image(files: List[UploadFile] = File(...)):
     try:
-        # สั่ง AI ให้อ่านข้อมูลดิบจากป้ายชื่อ
-        instruction = """
-        Extract all text from the magnetic name strips on this Muster Board. 
-        Focus on Cabin ID (e.g. 422A, D-618) and Name.
-        Return the result line by line. 
-        Format: [CabinID] [Name]
-        Example: 
-        422A CHERDCHAI
-        D-618 SURIYA
-        """
+        # Prompt แบบสั้นพิเศษเพื่อลดการค้างและเพิ่มความเร็ว
+        instruction = "List all [CabinID][Name] from the name tags. One per line. Example: 422A CHERDCHAI"
         
         contents = [instruction]
         for file in files:
             image_bytes = await file.read()
             contents.append({"mime_type": file.content_type, "data": image_bytes})
         
+        # ส่งข้อมูลไปประมวลผล
         response = model.generate_content(contents)
-        # ส่งค่ากลับเป็น List ของข้อความที่อ่านได้
-        lines = [l.strip().upper() for l in response.text.split('\n') if len(l.strip()) > 2]
+        # กรองเฉพาะบรรทัดที่มีข้อมูลจริงๆ
+        lines = [line.strip().upper() for line in response.text.split('\n') if len(line.strip()) > 3]
+        
         return JSONResponse(content=lines)
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
