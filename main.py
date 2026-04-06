@@ -1,6 +1,6 @@
 import os
 import re
-import google.generativeai as genai
+from google import genai
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
