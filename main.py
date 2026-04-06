@@ -18,7 +18,7 @@ app.add_middleware(
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "google/gemini-2.0-flash-001"  # หรือจะเปลี่ยนเป็น model อื่นได้
+MODEL = "google/gemini-2.0-flash-lite-001"  # หรือจะเปลี่ยนเป็น model อื่นได้
 
 HTML_PATH = Path(__file__).parent / "index.html"
 
