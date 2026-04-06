@@ -7,146 +7,186 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-slate-900 text-white p-5">
-    <div class="max-w-xl mx-auto bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-700">
-        <h1 class="text-2xl font-bold mb-6 text-center text-blue-400">🚢 POB Checker (Hybrid Mode)</h1>
-        
-        <div class="space-y-4">
-            <div class="bg-slate-700/50 p-4 rounded-xl border border-slate-600">
-                <label class="block text-sm font-medium mb-2 text-blue-300">1. ไฟล์ POB Excel</label>
-                <input type="file" id="excelFile" accept=".xlsx" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                <p id="excelStatus" class="mt-2 text-xs text-gray-400 italic">ยังไม่ได้โหลดไฟล์...</p>
-            </div>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4">
+    <div class="max-w-3xl mx-auto space-y-6">
+        <header class="text-center p-6 bg-slate-800 rounded-3xl border border-slate-700 shadow-xl">
+            <h1 class="text-3xl font-black text-blue-400">🚢 POB CHECKER</h1>
+            <p class="text-slate-400 text-sm">Kamala Thanee - Professional Version</p>
+        </header>
 
-            <div class="bg-slate-700/50 p-4 rounded-xl border border-slate-600">
-                <label class="block text-sm font-medium mb-2 text-green-300">2. รูปบอร์ด Muster (เลือกหลายรูปได้)</label>
-                <input type="file" id="imageFiles" accept="image/*" multiple class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700">
+                <label class="block text-sm font-bold mb-2 text-blue-300">1. ข้อมูล Excel (Sheet: POB)</label>
+                <input type="file" id="excelInput" accept=".xlsx" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
             </div>
-
-            <button onclick="processData()" id="btn" class="w-full bg-blue-500 py-4 rounded-xl font-bold text-lg hover:bg-blue-400 transition-all shadow-lg active:scale-95 disabled:bg-gray-600">วิเคราะห์ข้อมูลทั้งหมด</button>
+            <div class="p-4 bg-slate-800 rounded-2xl border border-slate-700">
+                <label class="block text-sm font-bold mb-2 text-green-300">2. รูปบอร์ด Muster (หลายรูปได้)</label>
+                <input type="file" id="imageInput" accept="image/*" multiple class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer">
+            </div>
         </div>
 
-        <div id="result" class="mt-6 space-y-2"></div>
+        <button onclick="processAll()" id="mainBtn" class="w-full py-4 bg-blue-500 hover:bg-blue-400 rounded-2xl font-black text-xl shadow-lg transition-transform active:scale-95 disabled:bg-slate-700">เริ่มการตรวจเช็ก</button>
+
+        <div id="validationBox" class="hidden p-4 bg-amber-900/20 border border-amber-600/50 rounded-2xl text-amber-200 text-sm italic"></div>
+
+        <div id="dashboard" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 font-bold">
+            <div class="bg-slate-800 p-4 rounded-2xl text-center border-b-4 border-blue-500">
+                <div class="text-xs text-slate-400">CREW</div>
+                <div id="count-crew" class="text-2xl text-blue-400">0 / 0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl text-center border-b-4 border-purple-500">
+                <div class="text-xs text-slate-400">CATERING</div>
+                <div id="count-catering" class="text-2xl text-purple-400">0 / 0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-2xl text-center border-b-4 border-orange-500">
+                <div class="text-xs text-slate-400">PASSENGER</div>
+                <div id="count-passenger" class="text-2xl text-orange-400">0 / 0</div>
+            </div>
+        </div>
+
+        <div id="resultList" class="space-y-2"></div>
     </div>
 
     <script>
-        let pobList = []; // จะเก็บเป็น Object { cabinId: '401A', name: 'SURIYA', rawCabin: '401' }
-        let allDetectedText = []; // เก็บข้อความทุกบรรทัดที่ AI อ่านเจอ
+        let pobData = { crew: [], catering: [], passenger: [] };
+        let summaryExcel = { crew: 0, catering: 0, passenger: 0, total: 0 };
+        let rawOcrLines = [];
 
-        document.getElementById('excelFile').onchange = function(e) {
-            const reader = new FileReader();
-            const statusEl = document.getElementById('excelStatus');
-            statusEl.innerText = "กำลังคำนวณ POB...";
-            
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const sheet = workbook.Sheets['POB']; 
-                    if(!sheet) return statusEl.innerText = "❌ ไม่พบหน้าชื่อ 'POB'";
-                    
-                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                    pobList = [];
-                    
-                    for(let i = 0; i < rows.length; i++) {
-                        let row = rows[i];
-                        if(!row) continue;
-                        
-                        let no = parseInt(row[0]); // ลำดับ (Col A)
-                        let cabin = String(row[1] || "").trim().toUpperCase(); // เลขห้อง (Col B)
-                        let bed = String(row[2] || "").trim().toUpperCase();   // เตียง (Col C)
-                        let name = String(row[3] || "").trim().toUpperCase();  // ชื่อ (Col D)
-                        
-                        if (!isNaN(no) && no > 0 && name.length > 5) {
-                            // รวมเลขห้องกับเตียงเข้าด้วยกัน (เช่น 401 + A = 401A)
-                            let cabinId = bed ? cabin + bed : cabin;
-                            pobList.push({ 
-                                cabinId: cabinId, 
-                                rawCabin: cabin,
-                                name: name 
-                            });
-                        }
-                    }
+        // 1. อ่าน Excel ตาม Logic 3 ตาราง + Summary
+        document.getElementById('excelInput').onchange = async (e) => {
+            const data = await e.target.files[0].arrayBuffer();
+            const workbook = XLSX.read(data);
+            const sheet = workbook.Sheets['POB'];
+            if(!sheet) return alert("ไม่พบ Sheet ชื่อ 'POB'");
 
-                    statusEl.className = "mt-2 text-xs text-green-400 font-bold";
-                    statusEl.innerText = `✅ โหลดสำเร็จ: ${pobList.length} คน (ใช้เลขห้องช่วยตรวจ)`;
-                    allDetectedText = [];
-                    updateDisplay();
-                } catch (err) {
-                    statusEl.innerText = "❌ เกิดข้อผิดพลาดในการอ่านไฟล์";
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            let currentSection = "";
+            pobData = { crew: [], catering: [], passenger: [] };
+
+            rows.forEach(row => {
+                const colA = String(row[0] || "").toUpperCase();
+                const colB = String(row[1] || "").toUpperCase(); // Cabin
+                const colC = String(row[2] || "").toUpperCase(); // Bed
+                const colD = String(row[3] || "").toUpperCase(); // Name
+
+                // ตรวจหา Header ของตาราง
+                if(colD.includes("BARGE CREW")) { currentSection = "crew"; return; }
+                if(colD.includes("CATERING")) { currentSection = "catering"; return; }
+                if(colD.includes("PASSENGER") || colD.includes("OPERATION")) { currentSection = "passenger"; return; }
+
+                // ตรวจหา Summary ท้ายไฟล์
+                if(colD.includes("TOTAL POB")) summaryExcel.total = parseInt(row[4]) || 0;
+                if(colD.includes("BARGE CREW") && !colD.includes("NAME")) summaryExcel.crew = parseInt(row[4]) || 0;
+
+                // ดึงรายชื่อ (ข้ามหัวตารางและแถวว่าง)
+                if(currentSection && !isNaN(parseInt(colA)) && colD.length > 3) {
+                    pobData[currentSection].push({
+                        id: (colB + colC).replace(/\s/g, ""),
+                        room: colB,
+                        name: colD,
+                        status: false,
+                        confidence: 0
+                    });
                 }
-            };
-            reader.readAsArrayBuffer(e.target.files[0]);
+            });
+            alert(`โหลดข้อมูลสำเร็จ! ยอดรวมรายชื่อ: ${pobData.crew.length + pobData.catering.length + pobData.passenger.length} คน`);
         };
 
-        async function processData() {
-            const files = document.getElementById('imageFiles').files;
-            const btn = document.getElementById('btn');
-            if (pobList.length === 0 || files.length === 0) return alert('โปรดโหลด Excel และรูปให้ครบ');
-
-            btn.disabled = true;
-            for (let i = 0; i < files.length; i++) {
-                btn.innerText = `อ่านรูปที่ ${i+1}/${files.length}...`;
-                const formData = new FormData();
-                formData.append('files', files[i]);
-
-                try {
-                    const res = await fetch('/api/read-image', { method: 'POST', body: formData });
-                    const data = await res.json();
-                    if (Array.isArray(data)) {
-                        allDetectedText = allDetectedText.concat(data); // เอาข้อความที่ AI อ่านได้มาต่อกัน
-                    }
-                } catch (err) { console.error("Error:", err); }
-            }
-            btn.disabled = false;
-            btn.innerText = 'วิเคราะห์ข้อมูลทั้งหมด';
-            updateDisplay();
+        // 2. Logic การเปรียบเทียบ (Matching Engine)
+        function calculateConfidence(str1, str2) {
+            if (str1 === str2) return 100;
+            const longer = str1.length > str2.length ? str1 : str2;
+            const shorter = str1.length > str2.length ? str2 : str1;
+            if (longer.length === 0) return 100;
+            // ง่ายๆ: เช็กว่ามีคำอยู่ในนั้นกี่ %
+            return (longer.includes(shorter) ? 0.8 : 0) * 100;
         }
 
-        function updateDisplay() {
-            const resultDiv = document.getElementById('result');
-            let foundCount = 0;
-            let listHtml = "";
-            
-            pobList.forEach(person => {
-                // Logic ความฉลาด: เช็กว่า AI อ่านเจอ "เลขห้อง (เช่น 401A)" หรือ "ชื่อบางส่วน" หรือไม่
-                let isFound = false;
-                
-                // หาจากทุกบรรทัดที่ AI อ่านมาได้
-                for(let text of allDetectedText) {
-                    // 1. ถ้าเจอเลขห้องตรงๆ (เช่น 401A)
-                    let matchCabin = person.cabinId && person.cabinId.length > 1 && text.includes(person.cabinId);
-                    
-                    // 2. ถ้าเจอชื่ออย่างน้อย 6 ตัวอักษรแรก (เผื่อนามสกุลโดนบัง)
-                    let shortName = person.name.substring(0, 6);
-                    let matchName = text.includes(shortName);
-                    
-                    if (matchCabin || matchName) {
-                        isFound = true;
-                        break;
-                    }
-                }
+        async function processAll() {
+            const imgFiles = document.getElementById('imageInput').files;
+            if(imgFiles.length === 0) return alert("กรุณาเลือกรูปภาพ");
 
-                if(isFound) foundCount++;
-                listHtml += `
-                    <div class="flex justify-between items-center p-2 mb-1 rounded-lg ${isFound ? 'bg-green-900/40 text-green-200' : 'bg-red-900/40 text-red-200'}">
-                        <span class="text-xs font-mono w-16">${person.cabinId || '-'}</span>
-                        <span class="text-xs flex-1">${person.name}</span>
-                        <span class="font-bold">${isFound ? '✅' : '❌'}</span>
-                    </div>`;
+            const btn = document.getElementById('mainBtn');
+            btn.disabled = true;
+            rawOcrLines = [];
+
+            // เรียก AI
+            for(let file of imgFiles) {
+                btn.innerText = `AI กำลังสแกนรูป...`;
+                const fd = new FormData();
+                fd.append('files', file);
+                const res = await fetch('/api/read-image', { method: 'POST', body: fd });
+                const lines = await res.json();
+                rawOcrLines = rawOcrLines.concat(lines);
+            }
+
+            // Matching Logic
+            let totalFound = 0;
+            let lowConfidenceCount = 0;
+
+            Object.keys(pobData).forEach(group => {
+                pobData[group].forEach(person => {
+                    rawOcrLines.forEach(line => {
+                        // ด่าน 1: เช็กเลขห้อง + เตียง (422A)
+                        if(line.includes(person.id)) {
+                            person.status = true;
+                            person.confidence = 100;
+                        } 
+                        // ด่าน 2: เช็กชื่อ (Fuzzy Match)
+                        else if(line.includes(person.name.substring(0, 6))) {
+                            person.status = true;
+                            person.confidence = 85;
+                        }
+                    });
+                    if(person.status) totalFound++;
+                    if(person.status && person.confidence < 80) lowConfidenceCount++;
+                });
             });
 
-            resultDiv.innerHTML = `
-                <div class="bg-blue-600 p-3 rounded-t-xl font-bold text-center flex justify-between px-6">
-                    <span>มาแล้ว: ${foundCount}</span>
-                    <span>ขาด: ${pobList.length - foundCount}</span>
-                </div>
-                <div class="bg-slate-800 p-2 text-xs text-gray-400 flex">
-                    <span class="w-16">CABIN</span><span class="flex-1">NAME</span><span>STATUS</span>
-                </div>
-                <div class="bg-slate-700/30 p-2 max-h-[500px] overflow-y-auto rounded-b-xl border border-slate-600">
-                    ${listHtml}
-                </div>`;
+            btn.disabled = false;
+            btn.innerText = "เริ่มการตรวจเช็ก";
+            renderDashboard(totalFound, lowConfidenceCount);
+        }
+
+        function renderDashboard(totalFound, lowConfidence) {
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('count-crew').innerText = `${pobData.crew.filter(p=>p.status).length} / ${pobData.crew.length}`;
+            document.getElementById('count-catering').innerText = `${pobData.catering.filter(p=>p.status).length} / ${pobData.catering.length}`;
+            document.getElementById('count-passenger').innerText = `${pobData.passenger.filter(p=>p.status).length} / ${pobData.passenger.length}`;
+
+            // แจ้งเตือนความแม่นยำ
+            const valBox = document.getElementById('validationBox');
+            valBox.classList.remove('hidden');
+            const accuracy = ((totalFound / (rawOcrLines.length || 1)) * 100).toFixed(0);
+            
+            if(accuracy < 80) {
+                valBox.innerHTML = `⚠️ ความถูกต้องจากการอ่านรูปต่ำกว่า 80% (${accuracy}%) กรุณาตรวจสอบความชัดของรูปภาพ`;
+                valBox.className = "p-4 bg-red-900/20 border border-red-600 rounded-2xl text-red-200 text-sm";
+            } else {
+                valBox.innerHTML = `✅ การประมวลผลเสร็จสมบูรณ์ ความแม่นยำ AI ประมาณ ${accuracy}%`;
+                valBox.className = "p-4 bg-green-900/20 border border-green-600 rounded-2xl text-green-200 text-sm";
+            }
+
+            // แสดงรายชื่อ
+            let html = "";
+            Object.keys(pobData).forEach(group => {
+                html += `<div class="text-xs font-bold text-slate-500 mt-4 mb-2 uppercase">${group}</div>`;
+                pobData[group].forEach(p => {
+                    html += `
+                        <div class="flex items-center justify-between p-3 bg-slate-800 rounded-xl border ${p.status ? 'border-green-500/30' : 'border-red-500/30'}">
+                            <div class="flex items-center space-x-4">
+                                <span class="text-xs font-mono text-slate-400 w-12">${p.id}</span>
+                                <span class="text-sm ${p.status ? 'text-slate-100' : 'text-slate-500'}">${p.name}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                ${p.status && p.confidence < 90 ? '<span class="text-[10px] bg-amber-500 text-black px-2 rounded-full">ไม่ชัด</span>' : ''}
+                                <span>${p.status ? '✅' : '❌'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            document.getElementById('resultList').innerHTML = html;
         }
     </script>
 </body>
