@@ -9,11 +9,11 @@
 </head>
 <body class="bg-slate-900 text-white p-5">
     <div class="max-w-xl mx-auto bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-700">
-        <h1 class="text-2xl font-bold mb-6 text-center text-blue-400">🚢 POB Board Checker</h1>
+        <h1 class="text-2xl font-bold mb-6 text-center text-blue-400">🚢 POB Checker (Hybrid Mode)</h1>
         
         <div class="space-y-4">
             <div class="bg-slate-700/50 p-4 rounded-xl border border-slate-600">
-                <label class="block text-sm font-medium mb-2 text-blue-300">1. ไฟล์ POB Excel (หน้ารวม)</label>
+                <label class="block text-sm font-medium mb-2 text-blue-300">1. ไฟล์ POB Excel</label>
                 <input type="file" id="excelFile" accept=".xlsx" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                 <p id="excelStatus" class="mt-2 text-xs text-gray-400 italic">ยังไม่ได้โหลดไฟล์...</p>
             </div>
@@ -23,52 +23,57 @@
                 <input type="file" id="imageFiles" accept="image/*" multiple class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer">
             </div>
 
-            <button onclick="processData()" id="btn" class="w-full bg-blue-500 py-4 rounded-xl font-bold text-lg hover:bg-blue-400 transition-all shadow-lg active:scale-95">วิเคราะห์ข้อมูลทั้งหมด</button>
+            <button onclick="processData()" id="btn" class="w-full bg-blue-500 py-4 rounded-xl font-bold text-lg hover:bg-blue-400 transition-all shadow-lg active:scale-95 disabled:bg-gray-600">วิเคราะห์ข้อมูลทั้งหมด</button>
         </div>
 
         <div id="result" class="mt-6 space-y-2"></div>
     </div>
 
     <script>
-        let pobList = [];
-        let allDetectedNames = new Set();
+        let pobList = []; // จะเก็บเป็น Object { cabinId: '401A', name: 'SURIYA', rawCabin: '401' }
+        let allDetectedText = []; // เก็บข้อความทุกบรรทัดที่ AI อ่านเจอ
 
         document.getElementById('excelFile').onchange = function(e) {
             const reader = new FileReader();
             const statusEl = document.getElementById('excelStatus');
-            statusEl.innerText = "กำลังอ่านข้อมูล...";
+            statusEl.innerText = "กำลังคำนวณ POB...";
             
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const sheet = workbook.Sheets['POB']; 
-                    if(!sheet) {
-                        statusEl.innerText = "❌ ไม่พบหน้าชื่อ 'POB' ในไฟล์ Excel";
-                        return;
-                    }
-                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                    if(!sheet) return statusEl.innerText = "❌ ไม่พบหน้าชื่อ 'POB'";
                     
-                    let tempNames = [];
-                    // รายชื่อเริ่มแถวที่ 9 (index 8) ในคอลัมน์ D (index 3)
-                    for(let i = 8; i < rows.length; i++) {
+                    const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                    pobList = [];
+                    
+                    for(let i = 0; i < rows.length; i++) {
                         let row = rows[i];
                         if(!row) continue;
-                        let name = String(row[3] || "").trim().toUpperCase();
                         
-                        // กรองหัวข้อและค่าว่าง
-                        const exclude = ["", "NAME", "BARGE CREW", "CATERING", "PASSENGER", "POSITION"];
-                        if (name.length > 5 && !exclude.includes(name)) {
-                            tempNames.push(name);
+                        let no = parseInt(row[0]); // ลำดับ (Col A)
+                        let cabin = String(row[1] || "").trim().toUpperCase(); // เลขห้อง (Col B)
+                        let bed = String(row[2] || "").trim().toUpperCase();   // เตียง (Col C)
+                        let name = String(row[3] || "").trim().toUpperCase();  // ชื่อ (Col D)
+                        
+                        if (!isNaN(no) && no > 0 && name.length > 5) {
+                            // รวมเลขห้องกับเตียงเข้าด้วยกัน (เช่น 401 + A = 401A)
+                            let cabinId = bed ? cabin + bed : cabin;
+                            pobList.push({ 
+                                cabinId: cabinId, 
+                                rawCabin: cabin,
+                                name: name 
+                            });
                         }
                     }
 
-                    pobList = [...new Set(tempNames)];
                     statusEl.className = "mt-2 text-xs text-green-400 font-bold";
-                    statusEl.innerText = `✅ ตรวจพบรายชื่อ POB: ${pobList.length} คน`;
+                    statusEl.innerText = `✅ โหลดสำเร็จ: ${pobList.length} คน (ใช้เลขห้องช่วยตรวจ)`;
+                    allDetectedText = [];
                     updateDisplay();
                 } catch (err) {
-                    statusEl.innerText = "❌ อ่านไฟล์ไม่ได้";
+                    statusEl.innerText = "❌ เกิดข้อผิดพลาดในการอ่านไฟล์";
                 }
             };
             reader.readAsArrayBuffer(e.target.files[0]);
@@ -77,51 +82,69 @@
         async function processData() {
             const files = document.getElementById('imageFiles').files;
             const btn = document.getElementById('btn');
-            if (pobList.length === 0 || files.length === 0) return alert('โปรดเลือกไฟล์ให้ครบ');
+            if (pobList.length === 0 || files.length === 0) return alert('โปรดโหลด Excel และรูปให้ครบ');
 
             btn.disabled = true;
-            btn.innerText = 'กำลังประมวลผล...';
-            
             for (let i = 0; i < files.length; i++) {
                 btn.innerText = `อ่านรูปที่ ${i+1}/${files.length}...`;
                 const formData = new FormData();
                 formData.append('files', files[i]);
-                formData.append('excel_names', JSON.stringify(pobList));
 
                 try {
                     const res = await fetch('/api/read-image', { method: 'POST', body: formData });
                     const data = await res.json();
                     if (Array.isArray(data)) {
-                        data.forEach(d => allDetectedNames.add(String(d.name).toUpperCase().trim()));
+                        allDetectedText = allDetectedText.concat(data); // เอาข้อความที่ AI อ่านได้มาต่อกัน
                     }
-                    updateDisplay();
-                } catch (err) { console.error(err); }
+                } catch (err) { console.error("Error:", err); }
             }
             btn.disabled = false;
             btn.innerText = 'วิเคราะห์ข้อมูลทั้งหมด';
+            updateDisplay();
         }
 
         function updateDisplay() {
             const resultDiv = document.getElementById('result');
-            const detectedArray = Array.from(allDetectedNames);
             let foundCount = 0;
-            
             let listHtml = "";
-            pobList.forEach(name => {
-                const isFound = detectedArray.some(d => d.includes(name) || name.includes(d));
+            
+            pobList.forEach(person => {
+                // Logic ความฉลาด: เช็กว่า AI อ่านเจอ "เลขห้อง (เช่น 401A)" หรือ "ชื่อบางส่วน" หรือไม่
+                let isFound = false;
+                
+                // หาจากทุกบรรทัดที่ AI อ่านมาได้
+                for(let text of allDetectedText) {
+                    // 1. ถ้าเจอเลขห้องตรงๆ (เช่น 401A)
+                    let matchCabin = person.cabinId && person.cabinId.length > 1 && text.includes(person.cabinId);
+                    
+                    // 2. ถ้าเจอชื่ออย่างน้อย 6 ตัวอักษรแรก (เผื่อนามสกุลโดนบัง)
+                    let shortName = person.name.substring(0, 6);
+                    let matchName = text.includes(shortName);
+                    
+                    if (matchCabin || matchName) {
+                        isFound = true;
+                        break;
+                    }
+                }
+
                 if(isFound) foundCount++;
                 listHtml += `
                     <div class="flex justify-between items-center p-2 mb-1 rounded-lg ${isFound ? 'bg-green-900/40 text-green-200' : 'bg-red-900/40 text-red-200'}">
-                        <span class="text-xs">${name}</span>
+                        <span class="text-xs font-mono w-16">${person.cabinId || '-'}</span>
+                        <span class="text-xs flex-1">${person.name}</span>
                         <span class="font-bold">${isFound ? '✅' : '❌'}</span>
                     </div>`;
             });
 
             resultDiv.innerHTML = `
-                <div class="bg-blue-600 p-3 rounded-t-xl font-bold text-center">
-                    มาแล้ว ${foundCount} / ทั้งหมด ${pobList.length} คน
+                <div class="bg-blue-600 p-3 rounded-t-xl font-bold text-center flex justify-between px-6">
+                    <span>มาแล้ว: ${foundCount}</span>
+                    <span>ขาด: ${pobList.length - foundCount}</span>
                 </div>
-                <div class="bg-slate-700/30 p-2 max-h-96 overflow-y-auto rounded-b-xl border border-slate-600">
+                <div class="bg-slate-800 p-2 text-xs text-gray-400 flex">
+                    <span class="w-16">CABIN</span><span class="flex-1">NAME</span><span>STATUS</span>
+                </div>
+                <div class="bg-slate-700/30 p-2 max-h-[500px] overflow-y-auto rounded-b-xl border border-slate-600">
                     ${listHtml}
                 </div>`;
         }
