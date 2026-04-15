@@ -18,10 +18,20 @@ HTML_PATH          = Path(__file__).parent / "index.html"
 # ---- Model cascade (tried in order) ----
 MODELS = [
     {
+        "id": "nvidia/nemotron-nano-12b-v2-vl:free",
+        "label": "Nemotron 12B VL (OpenRouter Free)",
+        "provider": "openrouter",
+    },
+    {
         "id": "gemini-2.5-flash",
         "label": "Gemini 2.5 Flash (Google Free)",
         "provider": "google",
         "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    },
+    {
+        "id": "google/gemma-4-31b-it:free",
+        "label": "Gemma 4 31B (OpenRouter Free)",
+        "provider": "openrouter",
     },
     {
         "id": "gemini-2.5-flash-lite",
@@ -30,18 +40,8 @@ MODELS = [
         "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
     },
     {
-        "id": "nvidia/nemotron-nano-12b-v2-vl:free",
-        "label": "Nemotron 12B VL (OpenRouter Free)",
-        "provider": "openrouter",
-    },
-    {
-        "id": "google/gemma-4-31b-it:free",
-        "label": "Gemma 4 31B (OpenRouter Free)",
-        "provider": "openrouter",
-    },
-    {
         "id": "google/gemini-2.5-flash-lite",
-        "label": "Gemini 2.5 Flash Lite (OpenRouter Paid)",
+        "label": "Gemini 2.5 Flash Lite (OpenRouter Paid) 💰",
         "provider": "openrouter",
     },
 ]
