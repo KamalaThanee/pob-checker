@@ -11,7 +11,7 @@
 
     <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center">
         <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER CHECKER</h1>
-        <p class="text-slate-400 text-sm mt-1">Kamala Thanee · 180 คน · Gemini 2.0 Flash</p>
+        <p class="text-slate-400 text-sm mt-1">Kamala Thanee · 180 คน · Auto Model Cascade</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -31,6 +31,13 @@
         เริ่มการตรวจเช็ก
     </button>
 
+    <!-- Model status bar -->
+    <div id="modelStatus" class="hidden bg-slate-800 rounded-xl border border-slate-600 overflow-hidden">
+        <div class="text-[10px] text-slate-500 font-bold px-4 pt-3 uppercase">AI Model ที่ใช้งาน</div>
+        <div id="modelRows" class="p-3 space-y-1"></div>
+    </div>
+
+    <!-- Dashboard -->
     <div id="dashboard" class="hidden space-y-3">
         <div class="grid grid-cols-3 gap-3 font-bold text-center">
             <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500">
@@ -49,6 +56,7 @@
         <div class="bg-slate-800 p-3 rounded-xl text-sm font-bold text-center" id="totalSummary"></div>
     </div>
 
+    <!-- Debug -->
     <div id="debugBox" class="hidden bg-slate-800 p-4 rounded-xl border border-yellow-700">
         <div class="flex justify-between items-center mb-2">
             <span class="font-bold text-yellow-400 text-xs">🔍 Raw OCR จาก AI (debug)</span>
@@ -63,6 +71,8 @@
 <script>
 let pobData = { marine: [], catering: [], passenger: [] };
 let ocrResults = [];
+// track which model was used per image: [{imgIndex, model}]
+let modelLog = [];
 
 // ===================== LOAD EXCEL =====================
 document.getElementById('excelInput').onchange = async (e) => {
@@ -77,30 +87,26 @@ document.getElementById('excelInput').onchange = async (e) => {
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const colA = String(row[0] || '').trim();
-        const colB = String(row[1] || '').trim();   // Cabin No.
-        const colC = String(row[2] || '').trim();   // Bed
-        const colD = String(row[3] || '').trim().toUpperCase(); // Name
-        const colG = String(row[6] || '').trim().toUpperCase(); // Department
+        const colB = String(row[1] || '').trim();
+        const colC = String(row[2] || '').trim();
+        const colD = String(row[3] || '').trim().toUpperCase();
+        const colG = String(row[6] || '').trim().toUpperCase();
 
-        // หยุดเมื่อเจอ HOT BED หรือ SUMMARY
         if (colD.includes('HOT BED') || colD.includes('ONE DAY') || colA === 'SUMMARY') break;
-
-        // ต้องมี No. เป็นตัวเลข, Cabin, Bed, Name
         if (!/^\d+$/.test(colA)) continue;
         if (!colB || !colC || !colD) continue;
-        if (['NAME', 'BARGE CREW', 'CATERING', 'PASSENGER', 'SECTION'].includes(colD)) continue;
+        if (['NAME','BARGE CREW','CATERING','PASSENGER','SECTION'].includes(colD)) continue;
 
         const cabinId  = colB.toUpperCase().replace(/\s/g, '');
         const bed      = colC.toUpperCase();
         const cabinBed = cabinId + bed;
 
-        // แยกประเภทด้วย Column G (Department)
         let sec;
-        if (colG === 'MARINE CREW')   sec = 'marine';
+        if (colG === 'MARINE CREW')        sec = 'marine';
         else if (colG === 'CATERING CREW') sec = 'catering';
         else                               sec = 'passenger';
 
-        pobData[sec].push({ cabin: cabinId, bed, cabinBed, name: colD, status: false, matchedBy: '' });
+        pobData[sec].push({ cabin: cabinId, bed, cabinBed, name: colD, status: false });
     }
 
     const t = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
@@ -108,7 +114,7 @@ document.getElementById('excelInput').onchange = async (e) => {
         `✅ Marine: ${pobData.marine.length} | Catering: ${pobData.catering.length} | Passenger: ${pobData.passenger.length} | รวม ${t} คน`;
 };
 
-// ===================== RESIZE IMAGE =====================
+// ===================== RESIZE =====================
 async function resizeImage(file, maxWidth = 1500) {
     return new Promise(resolve => {
         const img = new Image();
@@ -139,27 +145,36 @@ async function processImages() {
     const btn = document.getElementById('mainBtn');
     btn.disabled = true;
     ocrResults = [];
+    modelLog = [];
     let allRaw = [];
 
     for (let i = 0; i < files.length; i++) {
-        btn.innerText = `⏳ AI สแกนรูปที่ ${i + 1}/${files.length}...`;
+        btn.innerText = `⏳ กำลัง resize และสแกนรูปที่ ${i + 1}/${files.length}...`;
         const resized = await resizeImage(files[i]);
         const fd = new FormData();
         fd.append('files', resized);
+
         try {
-            const res = await fetch('/api/read-image', { method: 'POST', body: fd });
+            const res  = await fetch('/api/read-image', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.error) {
                 allRaw.push(`❌ รูปที่ ${i+1} ERROR: ${data.error}`);
+                modelLog.push({ img: i + 1, model: '❌ Error', error: data.error });
             } else {
                 if (data.parsed) ocrResults = ocrResults.concat(data.parsed);
-                if (data.raw) allRaw.push(`--- รูปที่ ${i+1} (${data.parsed?.length || 0} tags) ---\n${data.raw}`);
+                if (data.raw)    allRaw.push(`--- รูปที่ ${i+1} ---\n${data.raw}`);
+                modelLog.push({ img: i + 1, model: data.model_used || 'Unknown' });
             }
         } catch (err) {
             allRaw.push(`❌ รูปที่ ${i+1} FETCH ERROR: ${err}`);
+            modelLog.push({ img: i + 1, model: '❌ Fetch Error' });
         }
     }
 
+    // Show model status
+    renderModelStatus();
+
+    // Show debug
     document.getElementById('debugBox').classList.remove('hidden');
     document.getElementById('ocrCount').innerText = `อ่านได้ ${ocrResults.length} tags`;
     document.getElementById('debugText').textContent = allRaw.join('\n\n');
@@ -169,9 +184,40 @@ async function processImages() {
     btn.innerText = 'เริ่มการตรวจเช็กอีกครั้ง';
 }
 
+// ===================== MODEL STATUS =====================
+function renderModelStatus() {
+    document.getElementById('modelStatus').classList.remove('hidden');
+
+    // Count how many images used each model
+    const counts = {};
+    for (const entry of modelLog) {
+        counts[entry.model] = (counts[entry.model] || 0) + 1;
+    }
+
+    // Determine badge color per model type
+    function badgeClass(model) {
+        if (model.includes('Error'))   return 'bg-red-500/20 text-red-300 border-red-500/40';
+        if (model.includes('Paid'))    return 'bg-orange-500/20 text-orange-300 border-orange-500/40';
+        if (model.includes('Free'))    return 'bg-green-500/20 text-green-300 border-green-500/40';
+        return 'bg-slate-600/40 text-slate-300 border-slate-500/40';
+    }
+
+    let html = '';
+    for (const entry of modelLog) {
+        const badge = entry.model.includes('Paid') ? '💰 Paid' :
+                      entry.model.includes('Error') ? '❌' : '🆓 Free';
+        html += `
+        <div class="flex justify-between items-center px-2 py-1.5 rounded-lg border text-xs ${badgeClass(entry.model)}">
+            <span>รูปที่ ${entry.img}</span>
+            <span class="font-bold">${entry.model}</span>
+            <span>${badge}</span>
+        </div>`;
+    }
+    document.getElementById('modelRows').innerHTML = html;
+}
+
 // ===================== MATCHING =====================
 function matchAndShow() {
-    // สร้าง Set ของ cabinBed ที่ AI อ่านได้จากรูป เช่น "B-401A"
     const ocrSet = new Set();
     for (const ocr of ocrResults) {
         if (ocr.cabin_bed) ocrSet.add(ocr.cabin_bed.toUpperCase().replace(/\s/g, ''));
@@ -181,12 +227,8 @@ function matchAndShow() {
     Object.keys(pobData).forEach(sec => {
         pobData[sec].forEach(p => {
             p.status = false;
-            p.matchedBy = '';
             const key = p.cabinBed.toUpperCase().replace(/\s/g, '');
-            if (ocrSet.has(key)) {
-                p.status = true;
-                p.matchedBy = p.cabinBed;
-            }
+            if (ocrSet.has(key)) p.status = true;
         });
     });
 
