@@ -2,47 +2,34 @@ import os
 import re
 import base64
 import httpx
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional
 
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
+HTML_PATH       = Path(__file__).parent / "index.html"
+MAX_IMAGE_BYTES = 4 * 1024 * 1024  # 4 MB after client resize
+GOOGLE_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
-GEMINI_API_KEY     = os.environ.get("GEMINI_API_KEY", "")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-HTML_PATH          = Path(__file__).parent / "index.html"
+_http_client: Optional[httpx.AsyncClient] = None
+_html_cache: Optional[str] = None
 
-# ---- Model cascade (tried in order) ----
+# Google AI Studio — tried in order on quota/rate-limit errors
 MODELS = [
     {
-        "id": "nvidia/nemotron-nano-12b-v2-vl:free",
-        "label": "Nemotron 12B VL (OpenRouter Free)",
-        "provider": "openrouter",
-    },
-    {
-        "id": "gemini-2.5-flash",
-        "label": "Gemini 2.5 Flash (Google Free)",
-        "provider": "google",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-    },
-    {
-        "id": "google/gemma-4-31b-it:free",
-        "label": "Gemma 4 31B (OpenRouter Free)",
-        "provider": "openrouter",
+        "id": "gemini-3.1-flash-lite",
+        "label": "Gemini 3.1 Flash Lite (Google AI Studio)",
     },
     {
         "id": "gemini-2.5-flash-lite",
-        "label": "Gemini 2.5 Flash Lite (Google Free)",
-        "provider": "google",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+        "label": "Gemini 2.5 Flash Lite (Google AI Studio)",
     },
     {
-        "id": "google/gemini-2.5-flash-lite",
-        "label": "Gemini 2.5 Flash Lite (OpenRouter Paid) 💰",
-        "provider": "openrouter",
+        "id": "gemini-3-flash-preview",
+        "label": "Gemini 3 Flash Preview (Google AI Studio)",
     },
 ]
 
@@ -68,7 +55,34 @@ Example output:
 2 LR-5 B422B|NATTAWUT SI"""
 
 
-async def call_google(url: str, api_key: str, image_b64: str, mime: str) -> str:
+def _google_url(model_id: str) -> str:
+    return f"{GOOGLE_API_BASE}/{model_id}:generateContent"
+
+
+def _client() -> httpx.AsyncClient:
+    if _http_client is None:
+        raise RuntimeError("HTTP client not initialized")
+    return _http_client
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _http_client, _html_cache
+    _http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(60.0, connect=10.0),
+        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+    )
+    _html_cache = HTML_PATH.read_text(encoding="utf-8")
+    yield
+    await _http_client.aclose()
+    _http_client = None
+
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+async def call_google(model_id: str, api_key: str, image_b64: str, mime: str) -> str:
     payload = {
         "contents": [{
             "parts": [
@@ -78,44 +92,19 @@ async def call_google(url: str, api_key: str, image_b64: str, mime: str) -> str:
         }],
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
     }
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(f"{url}?key={api_key}", json=payload)
-    if resp.status_code == 429 or resp.status_code == 403:
-        raise QuotaError(f"Google quota: {resp.status_code}")
+    resp = await _client().post(f"{_google_url(model_id)}?key={api_key}", json=payload)
+    if resp.status_code in (429, 403, 503):
+        raise QuotaError(f"Google quota/rate limit ({model_id}): {resp.status_code}")
     if resp.status_code != 200:
         raise RuntimeError(f"Google error {resp.status_code}: {resp.text[:200]}")
-    return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-
-async def call_openrouter(model_id: str, api_key: str, image_b64: str, mime: str) -> str:
-    payload = {
-        "model": model_id,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": PROMPT},
-                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}}
-            ]
-        }],
-        "max_tokens": 2048,
-        "temperature": 0.1
-    }
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json=payload
-        )
-    if resp.status_code == 429 or resp.status_code == 402:
-        raise QuotaError(f"OpenRouter quota/payment: {resp.status_code}")
-    if resp.status_code != 200:
-        raise RuntimeError(f"OpenRouter error {resp.status_code}: {resp.text[:200]}")
     data = resp.json()
-    # Some free models return empty content when overloaded
-    content = data["choices"][0]["message"].get("content") or ""
-    if not content.strip():
-        raise QuotaError("Empty response (model overloaded)")
-    return content.strip()
+    try:
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        raise RuntimeError(f"Unexpected Google response: {str(data)[:200]}")
+    if not text or not text.strip():
+        raise QuotaError(f"Empty response from {model_id}")
+    return text.strip()
 
 
 class QuotaError(Exception):
@@ -145,45 +134,46 @@ def parse_ocr(raw_text: str) -> list:
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    return HTMLResponse(content=HTML_PATH.read_text(encoding="utf-8"))
+    return HTMLResponse(content=_html_cache or HTML_PATH.read_text(encoding="utf-8"))
 
 
 @app.post("/api/read-image")
 async def read_image(files: List[UploadFile] = File(...)):
     try:
+        if not GEMINI_API_KEY:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "GEMINI_API_KEY is not configured on the server."},
+            )
+
         image_bytes = await files[0].read()
-        b64  = base64.b64encode(image_bytes).decode("utf-8")
+        if len(image_bytes) > MAX_IMAGE_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"error": f"Image too large ({len(image_bytes)} bytes). Max {MAX_IMAGE_BYTES}."},
+            )
+
+        b64  = base64.b64encode(image_bytes).decode("ascii")
         mime = files[0].content_type or "image/jpeg"
 
-        last_error = "No API keys configured"
+        last_error = "No models available"
         for model in MODELS:
-            # Skip if required key is missing
-            if model["provider"] == "google" and not GEMINI_API_KEY:
-                continue
-            if model["provider"] == "openrouter" and not OPENROUTER_API_KEY:
-                continue
-
             try:
-                if model["provider"] == "google":
-                    raw = await call_google(model["url"], GEMINI_API_KEY, b64, mime)
-                else:
-                    raw = await call_openrouter(model["id"], OPENROUTER_API_KEY, b64, mime)
-
-                parsed = parse_ocr(raw)
+                raw = await call_google(model["id"], GEMINI_API_KEY, b64, mime)
                 return JSONResponse(content={
-                    "parsed": parsed,
+                    "parsed": parse_ocr(raw),
                     "raw": raw,
-                    "model_used": model["label"]
+                    "model_used": model["label"],
                 })
-
             except QuotaError as e:
                 last_error = str(e)
-                continue  # Try next model
             except Exception as e:
                 last_error = str(e)
-                continue  # Try next model
 
-        return JSONResponse(status_code=500, content={"error": f"All models failed. Last error: {last_error}"})
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"All Google models failed. Last error: {last_error}"},
+        )
 
     except Exception as e:
         import traceback

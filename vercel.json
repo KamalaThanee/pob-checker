@@ -4,6 +4,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "main.py" },
-    { "src": "/(.*)", "dest": "main.py" }
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
