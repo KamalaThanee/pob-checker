@@ -2,86 +2,147 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>POB Checker - Kamala Thanee</title>
-    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-    <script src="https://cdn.tailwindcss.com" defer></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #0f172a 100%);
+            color: #f1f5f9;
+        }
+        .wrap { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+        .card {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid #334155;
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+        }
+        .hero { text-align: center; padding: 1.5rem; margin-bottom: 1rem; }
+        .hero h1 { font-size: 1.75rem; font-weight: 900; color: #60a5fa; margin: 0.25rem 0; }
+        .hero p { color: #94a3b8; font-size: 0.875rem; margin: 0; }
+        .grid2 { display: grid; gap: 1rem; }
+        @media (min-width: 768px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+        label.lbl { display: block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+        .lbl-excel { color: #93c5fd; }
+        .lbl-img { color: #86efac; }
+        input[type=file] {
+            width: 100%; font-size: 0.8rem;
+            padding: 0.6rem; border-radius: 0.75rem;
+            border: 1px dashed #475569;
+            background: #0f172a; color: #e2e8f0;
+        }
+        #mainBtn {
+            width: 100%; margin-top: 0.5rem;
+            padding: 1.1rem; font-size: 1.15rem; font-weight: 800;
+            border: none; border-radius: 1rem; cursor: pointer;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+        }
+        #mainBtn:disabled { opacity: 0.6; cursor: wait; }
+        .hidden { display: none !important; }
+        .legend { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.7rem; margin: 0.75rem 0; }
+        .legend span { padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid; }
+        .leg-ok { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.4); color: #86efac; }
+        .leg-review { background: rgba(234,179,8,.15); border-color: rgba(234,179,8,.4); color: #fde047; }
+        .leg-absent { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); color: #fca5a5; }
+        .row-ok { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.35); color: #bbf7d0; }
+        .row-review { background: rgba(234,179,8,.08); border-color: rgba(234,179,8,.4); color: #fef08a; }
+        .row-absent { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.35); color: #fecaca; }
+        .person-row {
+            display: flex; flex-direction: column; gap: 0.35rem;
+            padding: 0.75rem; border-radius: 0.75rem; border: 1px solid; margin-bottom: 0.35rem;
+        }
+        .person-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+        .person-meta { font-size: 0.65rem; opacity: 0.85; line-height: 1.4; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; text-align: center; }
+        .stat-box { padding: 1rem; border-radius: 0.75rem; background: #1e293b; border-bottom: 3px solid; }
+        .img-tile { text-align: center; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid; font-size: 0.7rem; }
+        pre#debugText { max-height: 12rem; overflow: auto; font-size: 0.68rem; white-space: pre-wrap; color: #cbd5e1; }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white p-4">
-<div class="max-w-4xl mx-auto space-y-4">
+<body>
+<div class="wrap space-y-4">
 
-    <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center">
-        <h1 class="text-3xl font-black text-blue-400">🚢 POB MUSTER CHECKER</h1>
-        <p class="text-slate-400 text-sm mt-1">Kamala Thanee · 180 คน · Google AI Studio Cascade</p>
+    <div class="card hero">
+        <div style="font-size:2rem">🚢</div>
+        <h1>POB MUSTER CHECKER</h1>
+        <p>Kamala Thanee · 180 คน · Google AI Studio</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-            <label class="block mb-2 font-bold text-blue-300 uppercase text-xs">1. ไฟล์รายชื่อ (Excel)</label>
-            <input type="file" id="excelInput" accept=".xlsx" class="w-full text-sm">
-            <div id="excelInfo" class="mt-2 text-xs text-blue-400"></div>
+    <div class="grid2">
+        <div class="card">
+            <label class="lbl lbl-excel" for="excelInput">1. ไฟล์รายชื่อ (Excel)</label>
+            <input type="file" id="excelInput" accept=".xlsx">
+            <div id="excelInfo" style="margin-top:0.5rem;font-size:0.75rem;color:#93c5fd"></div>
         </div>
-        <div class="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-            <label class="block mb-2 font-bold text-green-300 uppercase text-xs">2. รูปบอร์ด (เลือกหลายรูปได้)</label>
-            <input type="file" id="imageInput" accept="image/*" multiple class="w-full text-sm">
+        <div class="card">
+            <label class="lbl lbl-img" for="imageInput">2. รูปบอร์ด (เลือกหลายรูปได้)</label>
+            <input type="file" id="imageInput" accept="image/*" multiple>
+            <div id="imageFileList" style="margin-top:0.5rem;font-size:0.7rem;color:#86efac"></div>
         </div>
     </div>
 
-    <button onclick="processImages()" id="mainBtn"
-        class="w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">
-        เริ่มการตรวจเช็ก
-    </button>
+    <button type="button" onclick="processImages()" id="mainBtn">เริ่มการตรวจเช็ก</button>
 
-    <!-- Per-image OCR summary -->
-    <div id="imageSummary" class="hidden bg-slate-800 rounded-xl border border-blue-700/50 overflow-hidden">
-        <div class="text-[10px] text-blue-400 font-bold px-4 pt-3 uppercase">จำนวนชื่อที่อ่านได้ต่อรูป</div>
-        <div id="imageSummaryRows" class="p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
-        <div id="imageSummaryTotal" class="px-4 pb-3 text-xs text-slate-400 font-bold border-t border-slate-700 pt-2"></div>
+    <div class="legend hidden" id="legendBox">
+        <span class="leg-ok">✅ เจอตรง (ห้อง+เตียง)</span>
+        <span class="leg-review">⚠️ ตรวจสอบ — ห้องหรือชื่อไม่ตรง</span>
+        <span class="leg-absent">❌ ไม่พบในรูปเลย</span>
     </div>
 
-    <!-- Model status bar -->
-    <div id="modelStatus" class="hidden bg-slate-800 rounded-xl border border-slate-600 overflow-hidden">
-        <div class="text-[10px] text-slate-500 font-bold px-4 pt-3 uppercase">AI Model ที่ใช้งาน</div>
-        <div id="modelRows" class="p-3 space-y-1"></div>
+    <div id="imageSummary" class="hidden card">
+        <div style="font-size:0.65rem;font-weight:700;color:#60a5fa;text-transform:uppercase">จำนวนชื่อที่อ่านได้ต่อรูป (ชื่อไฟล์)</div>
+        <div id="imageSummaryRows" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(7rem,1fr));gap:0.5rem;margin-top:0.75rem"></div>
+        <div id="imageSummaryTotal" style="margin-top:0.75rem;padding-top:0.5rem;border-top:1px solid #334155;font-size:0.75rem;color:#94a3b8;font-weight:600"></div>
     </div>
 
-    <!-- Dashboard -->
-    <div id="dashboard" class="hidden space-y-3">
-        <div class="grid grid-cols-3 gap-3 font-bold text-center">
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-blue-500">
-                <div class="text-[10px] text-slate-400 mb-1">MARINE CREW</div>
-                <div id="c-marine" class="text-xl">0/0</div>
+    <div id="modelStatus" class="hidden card">
+        <div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">AI Model ที่ใช้งาน</div>
+        <div id="modelRows" style="margin-top:0.5rem"></div>
+    </div>
+
+    <div id="dashboard" class="hidden">
+        <div class="stat-grid" style="margin-bottom:0.75rem">
+            <div class="stat-box" style="border-color:#3b82f6">
+                <div style="font-size:0.6rem;color:#94a3b8">MARINE</div>
+                <div id="c-marine" style="font-size:1.1rem;font-weight:800">0/0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-purple-500">
-                <div class="text-[10px] text-slate-400 mb-1">CATERING CREW</div>
-                <div id="c-catering" class="text-xl">0/0</div>
+            <div class="stat-box" style="border-color:#a855f7">
+                <div style="font-size:0.6rem;color:#94a3b8">CATERING</div>
+                <div id="c-catering" style="font-size:1.1rem;font-weight:800">0/0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border-b-4 border-orange-500">
-                <div class="text-[10px] text-slate-400 mb-1">PASSENGER</div>
-                <div id="c-pax" class="text-xl">0/0</div>
+            <div class="stat-box" style="border-color:#f97316">
+                <div style="font-size:0.6rem;color:#94a3b8">PASSENGER</div>
+                <div id="c-pax" style="font-size:1.1rem;font-weight:800">0/0</div>
             </div>
         </div>
-        <div class="bg-slate-800 p-3 rounded-xl text-sm font-bold text-center" id="totalSummary"></div>
+        <div class="card" style="text-align:center;font-size:0.85rem;font-weight:700" id="totalSummary"></div>
     </div>
 
-    <!-- Debug -->
-    <div id="debugBox" class="hidden bg-slate-800 p-4 rounded-xl border border-yellow-700">
-        <div class="flex justify-between items-center mb-2">
-            <span class="font-bold text-yellow-400 text-xs">🔍 Raw OCR จาก AI (debug)</span>
-            <span id="ocrCount" class="text-xs text-slate-400"></span>
+    <div id="debugBox" class="hidden card" style="border-color:#a16207">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+            <span style="font-weight:700;color:#fbbf24;font-size:0.75rem">🔍 Raw OCR (debug)</span>
+            <span id="ocrCount" style="font-size:0.7rem;color:#94a3b8"></span>
         </div>
-        <pre id="debugText" class="text-slate-300 whitespace-pre-wrap text-[11px] max-h-48 overflow-y-auto"></pre>
+        <pre id="debugText"></pre>
     </div>
 
-    <div id="results" class="space-y-1"></div>
+    <div id="results"></div>
 </div>
 
 <script>
 let pobData = { marine: [], catering: [], passenger: [] };
 let ocrResults = [];
-// track which model was used per image: [{imgIndex, model}]
 let modelLog = [];
-
 let xlsxPromise = null;
+
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function loadXLSX() {
     if (window.XLSX) return Promise.resolve(window.XLSX);
     if (!xlsxPromise) {
@@ -96,7 +157,12 @@ function loadXLSX() {
     return xlsxPromise;
 }
 
-// ===================== LOAD EXCEL =====================
+document.getElementById('imageInput').onchange = (e) => {
+    const names = Array.from(e.target.files).map(f => f.name);
+    const el = document.getElementById('imageFileList');
+    el.textContent = names.length ? `📷 ${names.length} รูป: ${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}` : '';
+};
+
 document.getElementById('excelInput').onchange = async (e) => {
     const XLSX = await loadXLSX();
     const buf = await e.target.files[0].arrayBuffer();
@@ -129,15 +195,17 @@ document.getElementById('excelInput').onchange = async (e) => {
         else if (colG === 'CATERING CREW') sec = 'catering';
         else                               sec = 'passenger';
 
-        pobData[sec].push({ cabin: cabinId, bed, cabinBed, name: colD, status: false });
+        pobData[sec].push({
+            cabin: cabinId, bed, cabinBed, name: colD,
+            matchStatus: 'absent', sourceFile: null, reviewReason: null, ocrCabin: null, ocrName: null
+        });
     }
 
     const t = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
     document.getElementById('excelInfo').innerText =
-        `✅ Marine: ${pobData.marine.length} | Catering: ${pobData.catering.length} | Passenger: ${pobData.passenger.length} | รวม ${t} คน`;
+        `✅ Marine ${pobData.marine.length} · Catering ${pobData.catering.length} · Passenger ${pobData.passenger.length} · รวม ${t} คน`;
 };
 
-// ===================== RESIZE =====================
 async function resizeImage(file, maxWidth = 1500) {
     return new Promise(resolve => {
         const img = new Image();
@@ -160,35 +228,31 @@ async function resizeImage(file, maxWidth = 1500) {
 
 const OCR_CONCURRENCY = 2;
 
-async function scanOneImage(file, index) {
+async function scanOneImage(file) {
     const resized = await resizeImage(file);
     const fd = new FormData();
     fd.append('files', resized);
+    const fileName = file.name;
     try {
         const res  = await fetch('/api/read-image', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.error) {
             return {
-                index,
-                tagCount: 0,
-                error: data.error,
-                raw: `❌ รูปที่ ${index + 1} ERROR: ${data.error}`,
-                model: '❌ Error',
+                fileName, tagCount: 0, error: data.error,
+                raw: `❌ ${fileName} ERROR: ${data.error}`,
+                model: '❌ Error', parsed: [],
             };
         }
-        const parsed = data.parsed || [];
+        const parsed = (data.parsed || []).map(t => ({ ...t, sourceFile: fileName }));
         return {
-            index,
-            parsed,
-            tagCount: parsed.length,
-            raw: data.raw ? `--- รูปที่ ${index + 1} ---\n${data.raw}` : '',
+            fileName, parsed, tagCount: parsed.length,
+            raw: data.raw ? `--- ${fileName} ---\n${data.raw}` : '',
             model: data.model_used || 'Unknown',
         };
     } catch (err) {
         return {
-            index,
-            tagCount: 0,
-            raw: `❌ รูปที่ ${index + 1} FETCH ERROR: ${err}`,
+            fileName, tagCount: 0, parsed: [],
+            raw: `❌ ${fileName} FETCH ERROR: ${err}`,
             model: '❌ Fetch Error',
         };
     }
@@ -196,9 +260,7 @@ async function scanOneImage(file, index) {
 
 async function runWithConcurrency(items, limit, fn, onProgress) {
     const results = new Array(items.length);
-    let next = 0;
-    let done = 0;
-
+    let next = 0, done = 0;
     async function worker() {
         while (next < items.length) {
             const i = next++;
@@ -207,13 +269,10 @@ async function runWithConcurrency(items, limit, fn, onProgress) {
             onProgress(done, items.length);
         }
     }
-
-    const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
-    await Promise.all(workers);
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
     return results;
 }
 
-// ===================== SCAN IMAGES =====================
 async function processImages() {
     const files = Array.from(document.getElementById('imageInput').files);
     if (!files.length) return alert('กรุณาเลือกรูปภาพ');
@@ -227,30 +286,35 @@ async function processImages() {
     let allRaw = [];
 
     const scanResults = await runWithConcurrency(
-        files,
-        OCR_CONCURRENCY,
-        scanOneImage,
-        (done, count) => {
-            btn.innerText = `⏳ กำลังสแกน ${done}/${count} รูป (พร้อมกัน ${OCR_CONCURRENCY} รูป)...`;
-        }
+        files, OCR_CONCURRENCY,
+        (file) => scanOneImage(file),
+        (done, count) => { btn.innerText = `⏳ สแกน ${done}/${count} รูป...`; }
     );
 
-    scanResults.sort((a, b) => a.index - b.index);
     const imageStats = [];
     for (const r of scanResults) {
         if (r.raw) allRaw.push(r.raw);
-        const count = r.tagCount ?? (r.parsed ? r.parsed.length : 0);
-        imageStats.push({ img: r.index + 1, count, model: r.model || '❌ Error', error: r.error });
-        modelLog.push({ img: r.index + 1, model: r.model || '❌ Error', tagCount: count, error: r.error });
-        if (r.parsed) ocrResults = ocrResults.concat(r.parsed);
+        imageStats.push({
+            fileName: r.fileName,
+            count: r.tagCount ?? 0,
+            model: r.model || '❌ Error',
+            error: r.error,
+        });
+        modelLog.push({
+            fileName: r.fileName,
+            model: r.model || '❌ Error',
+            tagCount: r.tagCount ?? 0,
+            error: r.error,
+        });
+        if (r.parsed?.length) ocrResults = ocrResults.concat(r.parsed);
     }
 
+    document.getElementById('legendBox').classList.remove('hidden');
     renderImageSummary(imageStats);
     renderModelStatus();
-
     document.getElementById('debugBox').classList.remove('hidden');
-    const perImg = imageStats.map(s => `รูป${s.img}:${s.count}`).join(' · ');
-    document.getElementById('ocrCount').innerText = `รวม ${ocrResults.length} ชื่อ · ${perImg}`;
+    document.getElementById('ocrCount').innerText =
+        `รวม ${ocrResults.length} ชื่อ · ` + imageStats.map(s => `${s.fileName}:${s.count}`).join(' · ');
     document.getElementById('debugText').textContent = allRaw.join('\n\n');
 
     matchAndShow();
@@ -258,131 +322,214 @@ async function processImages() {
     btn.innerText = 'เริ่มการตรวจเช็กอีกครั้ง';
 }
 
-// ===================== IMAGE SUMMARY =====================
 function renderImageSummary(imageStats) {
     const box = document.getElementById('imageSummary');
-    if (!imageStats.length) {
-        box.classList.add('hidden');
-        return;
-    }
+    if (!imageStats.length) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
     const total = imageStats.reduce((s, x) => s + x.count, 0);
     let html = '';
     for (const s of imageStats) {
-        const cls = s.error
-            ? 'bg-red-500/10 border-red-500/30 text-red-300'
-            : s.count > 0
-                ? 'bg-blue-500/10 border-blue-500/30 text-blue-200'
-                : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300';
-        html += `
-        <div class="text-center p-2 rounded-lg border text-xs ${cls}">
-            <div class="text-[10px] text-slate-400">รูปที่ ${s.img}</div>
-            <div class="text-lg font-black">${s.error ? '❌' : s.count}</div>
-            <div class="text-[10px] opacity-70">${s.error ? 'error' : 'ชื่อ'}</div>
+        const cls = s.error ? 'row-absent' : s.count > 0 ? 'row-ok' : 'row-review';
+        html += `<div class="img-tile ${cls}" title="${esc(s.fileName)}">
+            <div style="font-size:0.6rem;opacity:.7;word-break:break-all;max-height:2.5em;overflow:hidden">${esc(s.fileName)}</div>
+            <div style="font-size:1.25rem;font-weight:900">${s.error ? '❌' : s.count}</div>
+            <div style="opacity:.7">${s.error ? 'error' : 'ชื่อ'}</div>
         </div>`;
     }
     document.getElementById('imageSummaryRows').innerHTML = html;
     document.getElementById('imageSummaryTotal').innerText =
-        `รวมทุกรูป: ${total} ชื่อ จาก ${imageStats.length} รูป`;
+        `รวมทุกรูป: ${total} ชื่อ จาก ${imageStats.length} ไฟล์`;
 }
 
-// ===================== MODEL STATUS =====================
 function renderModelStatus() {
-    document.getElementById('modelStatus').classList.remove('hidden');
-
-    // Count how many images used each model
-    const counts = {};
-    for (const entry of modelLog) {
-        counts[entry.model] = (counts[entry.model] || 0) + 1;
-    }
-
-    // Determine badge color per model type
-    function badgeClass(model) {
-        if (model.includes('Error'))  return 'bg-red-500/20 text-red-300 border-red-500/40';
-        if (model.includes('Google')) return 'bg-green-500/20 text-green-300 border-green-500/40';
-        return 'bg-slate-600/40 text-slate-300 border-slate-500/40';
-    }
-
+    const box = document.getElementById('modelStatus');
+    box.classList.remove('hidden');
     let html = '';
     for (const entry of modelLog) {
-        const badge = entry.model.includes('Error') ? '❌' : '🔷 Google';
-        const countLabel = entry.tagCount != null ? `${entry.tagCount} ชื่อ` : '';
-        html += `
-        <div class="flex justify-between items-center px-2 py-1.5 rounded-lg border text-xs ${badgeClass(entry.model)}">
-            <span>รูปที่ ${entry.img}</span>
-            <span class="font-bold text-blue-300">${countLabel}</span>
-            <span class="font-bold truncate max-w-[40%]">${entry.model}</span>
-            <span>${badge}</span>
+        html += `<div style="display:flex;justify-content:space-between;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid #334155;font-size:0.7rem">
+            <span style="color:#93c5fd;max-width:35%;word-break:break-all">${esc(entry.fileName)}</span>
+            <span style="font-weight:700">${entry.tagCount} ชื่อ</span>
+            <span style="opacity:.8;truncate">${esc(entry.model)}</span>
         </div>`;
     }
     document.getElementById('modelRows').innerHTML = html;
 }
 
-// ===================== MATCHING =====================
 function normalizeKey(s) {
     return String(s || '').toUpperCase().replace(/[\s-]/g, '');
 }
 
-function matchAndShow() {
-    const ocrSet = new Set();
-    for (const ocr of ocrResults) {
-        const bedKey = normalizeKey(ocr.cabin_bed);
-        if (bedKey) ocrSet.add(bedKey);
-        if (ocr.cabin && ocr.bed) ocrSet.add(normalizeKey(ocr.cabin + ocr.bed));
+function parseCabinParts(cabinBed) {
+    const n = normalizeKey(cabinBed);
+    const m = n.match(/^([A-Z])(\d+)([A-D])$/);
+    if (m) return { letter: m[1], num: m[2], bed: m[3], base: m[1] + m[2], full: n };
+    return { letter: '', num: '', bed: '', base: n, full: n };
+}
+
+function nameSimilarity(excelName, ocrName) {
+    const a = String(excelName || '').split(/\s+/).filter(Boolean);
+    const b = String(ocrName || '').split(/\s+/).filter(Boolean);
+    if (!a.length || !b.length) return 0;
+    const firstMatch = a[0] === b[0] || b[0].startsWith(a[0]) || a[0].startsWith(b[0]);
+    if (!firstMatch) return 0;
+    if (a.length >= 2 && b.length >= 2) {
+        const la = a[a.length - 1], lb = b[b.length - 1];
+        if (la === lb || lb.startsWith(la) || la.startsWith(lb)) return 1;
+        return 0.65;
+    }
+    return 0.55;
+}
+
+function findBestReview(p, candidates) {
+    const pParts = parseCabinParts(p.cabinBed);
+    let best = null;
+    let bestScore = 0;
+
+    for (const { o, i } of candidates) {
+        const oParts = parseCabinParts(o.cabin_bed);
+        const sameBase = pParts.base && pParts.base === oParts.base;
+        const nameSim = nameSimilarity(p.name, o.name_tag);
+        let score = 0;
+        let reason = '';
+
+        if (sameBase && pParts.bed && oParts.bed && pParts.bed !== oParts.bed) {
+            score = 0.95 + nameSim * 0.05;
+            reason = `เตียงไม่ตรง: ในรูป ${o.cabin_bed} "${o.name_tag || '-'}" · ในไฟล์ ${p.cabinBed} "${p.name}"`;
+        } else if (sameBase && nameSim >= 0.55 && nameSim < 1) {
+            score = 0.75 + nameSim * 0.2;
+            reason = `ชื่อไม่ตรงเต็ม: ในรูป "${o.name_tag || '-'}" · ในไฟล์ "${p.name}" (${o.cabin_bed})`;
+        } else if (sameBase && !nameSim) {
+            score = 0.7;
+            reason = `ห้องตรงแต่ชื่อต่าง: ในรูป ${o.cabin_bed} "${o.name_tag || '-'}" · ในไฟล์ "${p.name}"`;
+        } else if (!sameBase && nameSim >= 0.55) {
+            score = 0.5 + nameSim * 0.35;
+            reason = `ชื่อคล้ายแต่ห้องต่าง: ในรูป ${o.cabin_bed} "${o.name_tag}" · ในไฟล์ ${p.cabinBed} "${p.name}"`;
+        }
+
+        if (score > bestScore) {
+            bestScore = score;
+            best = { o, i, reason, score };
+        }
     }
 
+    if (best && best.score >= 0.5) return best;
+    return null;
+}
+
+function matchAndShow() {
+    const usedOcr = new Set();
+    const allPeople = [];
     for (const sec of Object.keys(pobData)) {
-        for (const p of pobData[sec]) {
-            p.status = ocrSet.has(normalizeKey(p.cabinBed));
+        for (const p of pobData[sec]) allPeople.push(p);
+    }
+
+    for (const p of allPeople) {
+        const pKey = normalizeKey(p.cabinBed);
+        const idx = ocrResults.findIndex((o, i) =>
+            !usedOcr.has(i) && normalizeKey(o.cabin_bed) === pKey
+        );
+        if (idx >= 0) {
+            usedOcr.add(idx);
+            const o = ocrResults[idx];
+            p.matchStatus = 'ok';
+            p.sourceFile = o.sourceFile;
+            p.reviewReason = null;
+            p.ocrCabin = o.cabin_bed;
+            p.ocrName = o.name_tag;
+        }
+    }
+
+    for (const p of allPeople) {
+        if (p.matchStatus === 'ok') continue;
+        const candidates = ocrResults
+            .map((o, i) => ({ o, i }))
+            .filter(x => !usedOcr.has(x.i));
+        const review = findBestReview(p, candidates);
+        if (review) {
+            usedOcr.add(review.i);
+            p.matchStatus = 'review';
+            p.sourceFile = review.o.sourceFile;
+            p.reviewReason = review.reason;
+            p.ocrCabin = review.o.cabin_bed;
+            p.ocrName = review.o.name_tag;
+        } else {
+            p.matchStatus = 'absent';
+            p.sourceFile = null;
+            p.reviewReason = null;
+            p.ocrCabin = null;
+            p.ocrName = null;
         }
     }
 
     renderUI();
 }
 
-// ===================== RENDER =====================
+function sectionCounts(arr) {
+    return {
+        ok: arr.filter(x => x.matchStatus === 'ok').length,
+        review: arr.filter(x => x.matchStatus === 'review').length,
+        absent: arr.filter(x => x.matchStatus === 'absent').length,
+    };
+}
+
+function renderPersonRow(p) {
+    const status = p.matchStatus;
+    const cls = status === 'ok' ? 'row-ok' : status === 'review' ? 'row-review' : 'row-absent';
+    const icon = status === 'ok' ? '✅' : status === 'review' ? '⚠️' : '❌';
+    let meta = '';
+    if (status === 'review') {
+        meta = `<div class="person-meta">
+            <div>${esc(p.reviewReason)}</div>
+            <div style="color:#fbbf24">↳ ดูรูป: <b>${esc(p.sourceFile)}</b></div>
+        </div>`;
+    } else if (status === 'ok' && p.sourceFile) {
+        meta = `<div class="person-meta">↳ พบในรูป: <b>${esc(p.sourceFile)}</b></div>`;
+    }
+    return `<div class="person-row ${cls}">
+        <div class="person-top">
+            <span style="font-size:0.875rem"><b>${esc(p.cabinBed)}</b> ${esc(p.name)}</span>
+            <span style="font-size:1.25rem">${icon}</span>
+        </div>
+        ${meta}
+    </div>`;
+}
+
 function renderUI() {
     document.getElementById('dashboard').classList.remove('hidden');
 
-    const mOK  = pobData.marine.filter(x => x.status).length;
-    const cOK  = pobData.catering.filter(x => x.status).length;
-    const pOK  = pobData.passenger.filter(x => x.status).length;
-    const tOK  = mOK + cOK + pOK;
-    const tAll = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
+    function fmtCounts(arr, elId) {
+        const c = sectionCounts(arr);
+        document.getElementById(elId).innerHTML =
+            `<span style="color:#86efac">${c.ok}</span>/<span>${arr.length}</span>` +
+            (c.review ? ` <span style="color:#fde047;font-size:0.65rem">⚠${c.review}</span>` : '');
+    }
+    fmtCounts(pobData.marine, 'c-marine');
+    fmtCounts(pobData.catering, 'c-catering');
+    fmtCounts(pobData.passenger, 'c-pax');
 
-    document.getElementById('c-marine').innerText   = `${mOK}/${pobData.marine.length}`;
-    document.getElementById('c-catering').innerText = `${cOK}/${pobData.catering.length}`;
-    document.getElementById('c-pax').innerText      = `${pOK}/${pobData.passenger.length}`;
+    const all = [...pobData.marine, ...pobData.catering, ...pobData.passenger];
+    const tc = sectionCounts(all);
     document.getElementById('totalSummary').innerHTML =
-        `รวม: <span class="text-green-400">${tOK}</span>/${tAll} คน &nbsp;|&nbsp; ขาด: <span class="text-red-400">${tAll - tOK}</span> คน`;
+        `✅ เจอตรง <span style="color:#86efac">${tc.ok}</span> · ` +
+        `⚠️ ตรวจสอบ <span style="color:#fde047">${tc.review}</span> · ` +
+        `❌ ไม่พบ <span style="color:#fca5a5">${tc.absent}</span> · รวม ${all.length} คน`;
 
     const sections = [
-        { key: 'marine',    label: 'MARINE CREW' },
-        { key: 'catering',  label: 'CATERING CREW' },
-        { key: 'passenger', label: 'PASSENGER / OPERATION' }
+        { key: 'marine', label: 'MARINE CREW' },
+        { key: 'catering', label: 'CATERING CREW' },
+        { key: 'passenger', label: 'PASSENGER / OPERATION' },
     ];
 
+    const order = { review: 0, absent: 1, ok: 2 };
     let html = '';
-    sections.forEach(({ key, label }) => {
-        const absent  = pobData[key].filter(x => !x.status);
-        const present = pobData[key].filter(x => x.status);
-
-        html += `<div class="text-[11px] text-slate-400 font-bold mt-5 mb-2 uppercase px-1">
-            ${label} — ✅ ${present.length} &nbsp; ❌ ขาด ${absent.length}
+    for (const { key, label } of sections) {
+        const list = [...pobData[key]].sort((a, b) => order[a.matchStatus] - order[b.matchStatus]);
+        const c = sectionCounts(list);
+        html += `<div style="font-size:0.7rem;font-weight:700;color:#94a3b8;margin:1.25rem 0 0.5rem;text-transform:uppercase">
+            ${label} — ✅ ${c.ok} · ⚠️ ${c.review} · ❌ ${c.absent}
         </div>`;
-
-        [...absent, ...present].forEach(p => {
-            const cls = p.status
-                ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                : 'bg-red-500/10 border-red-500/30 text-red-300';
-            html += `
-            <div class="flex justify-between items-center p-3 rounded-xl border ${cls} mb-1">
-                <span class="text-sm"><b>${p.cabinBed}</b> &nbsp;${p.name}</span>
-                <span>${p.status ? '✅' : '❌'}</span>
-            </div>`;
-        });
-    });
-
+        for (const p of list) html += renderPersonRow(p);
+    }
     document.getElementById('results').innerHTML = html;
 }
 </script>
