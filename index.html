@@ -60,6 +60,13 @@
         .stat-box { padding: 1rem; border-radius: 0.75rem; background: #1e293b; border-bottom: 3px solid; }
         .img-tile { text-align: center; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid; font-size: 0.7rem; }
         pre#debugText { max-height: 12rem; overflow: auto; font-size: 0.68rem; white-space: pre-wrap; color: #cbd5e1; }
+        .filter-bar { display: grid; gap: 0.75rem; margin-bottom: 0.75rem; }
+        @media (min-width: 640px) { .filter-bar { grid-template-columns: 1fr 1fr; } }
+        .filter-bar label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 0.35rem; }
+        .filter-bar select, .filter-bar input {
+            width: 100%; padding: 0.55rem 0.75rem; border-radius: 0.5rem;
+            border: 1px solid #475569; background: #0f172a; color: #f1f5f9; font-size: 0.85rem;
+        }
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -88,7 +95,7 @@
     <button type="button" onclick="processImages()" id="mainBtn">เริ่มการตรวจเช็ก</button>
 
     <div class="legend hidden" id="legendBox">
-        <span class="leg-ok">✅ เจอตรง (ห้อง+เตียง)</span>
+        <span class="leg-ok">✅ เจอตรง (ห้อง+เตียง+ชื่อ)</span>
         <span class="leg-review">⚠️ ตรวจสอบ — ห้องหรือชื่อไม่ตรง</span>
         <span class="leg-absent">❌ ไม่พบในรูปเลย</span>
     </div>
@@ -120,6 +127,17 @@
             </div>
         </div>
         <div class="card" style="text-align:center;font-size:0.85rem;font-weight:700" id="totalSummary"></div>
+    </div>
+    <div id="filterBar" class="hidden card filter-bar">
+        <div>
+            <label for="filterCabin">กรองเลขห้อง</label>
+            <select id="filterCabin"><option value="ALL">ทุกห้อง</option></select>
+        </div>
+        <div>
+            <label for="filterName">ค้นหาชื่อ</label>
+            <input type="text" id="filterName" placeholder="พิมพ์ชื่อ เช่น TANAWAT">
+        </div>
+        <div id="filterResultHint" style="grid-column:1/-1;font-size:0.7rem;color:#94a3b8;min-height:1em"></div>
     </div>
 
     <div id="debugBox" class="hidden card" style="border-color:#a16207">
@@ -380,88 +398,107 @@ function nameSimilarity(excelName, ocrName) {
     return 0.55;
 }
 
-function findBestReview(p, candidates) {
+const NAME_MATCH_MIN = 0.55;
+
+function classifyPerson(p) {
+    const pKey = normalizeKey(p.cabinBed);
     const pParts = parseCabinParts(p.cabinBed);
-    let best = null;
-    let bestScore = 0;
 
-    for (const { o, i } of candidates) {
-        const oParts = parseCabinParts(o.cabin_bed);
-        const sameBase = pParts.base && pParts.base === oParts.base;
-        const nameSim = nameSimilarity(p.name, o.name_tag);
-        let score = 0;
-        let reason = '';
-
-        if (sameBase && pParts.bed && oParts.bed && pParts.bed !== oParts.bed) {
-            score = 0.95 + nameSim * 0.05;
-            reason = `เตียงไม่ตรง: ในรูป ${o.cabin_bed} "${o.name_tag || '-'}" · ในไฟล์ ${p.cabinBed} "${p.name}"`;
-        } else if (sameBase && nameSim >= 0.55 && nameSim < 1) {
-            score = 0.75 + nameSim * 0.2;
-            reason = `ชื่อไม่ตรงเต็ม: ในรูป "${o.name_tag || '-'}" · ในไฟล์ "${p.name}" (${o.cabin_bed})`;
-        } else if (sameBase && !nameSim) {
-            score = 0.7;
-            reason = `ห้องตรงแต่ชื่อต่าง: ในรูป ${o.cabin_bed} "${o.name_tag || '-'}" · ในไฟล์ "${p.name}"`;
-        } else if (!sameBase && nameSim >= 0.55) {
-            score = 0.5 + nameSim * 0.35;
-            reason = `ชื่อคล้ายแต่ห้องต่าง: ในรูป ${o.cabin_bed} "${o.name_tag}" · ในไฟล์ ${p.cabinBed} "${p.name}"`;
-        }
-
-        if (score > bestScore) {
-            bestScore = score;
-            best = { o, i, reason, score };
+    // ✅ ห้อง + เตียง + ชื่อ ตรง
+    for (const o of ocrResults) {
+        if (normalizeKey(o.cabin_bed) === pKey && nameSimilarity(p.name, o.name_tag) >= NAME_MATCH_MIN) {
+            return { status: 'ok', o, reason: null };
         }
     }
 
-    if (best && best.score >= 0.5) return best;
-    return null;
+    // ⚠️ ห้อง+เตียงตรง แต่ชื่อในรูปเป็นคนอื่น (เช่น B434C เป็น TANAWAT แต่ POB เป็น THITIPOOM)
+    for (const o of ocrResults) {
+        if (normalizeKey(o.cabin_bed) === pKey) {
+            return {
+                status: 'review',
+                o,
+                reason: `ห้อง+เตียงตรงแต่ชื่อในรูปไม่ตรง: ในรูป "${o.name_tag || '?'}" · POB "${p.name}"`,
+            };
+        }
+    }
+
+    // ⚠️ ชื่อตรง แต่เตียง/ห้องในรูปต่าง (เช่น POB B434B TANAWAT แต่รูป B434C TANAWAT)
+    let bestBed = null;
+    let bestBedScore = 0;
+    for (const o of ocrResults) {
+        const oParts = parseCabinParts(o.cabin_bed);
+        const nameSim = nameSimilarity(p.name, o.name_tag);
+        if (pParts.base && pParts.base === oParts.base && pParts.bed !== oParts.bed && nameSim >= NAME_MATCH_MIN) {
+            if (nameSim > bestBedScore) {
+                bestBedScore = nameSim;
+                bestBed = {
+                    o,
+                    reason: `เตียงไม่ตรง (ชื่อตรง): ในรูป ${o.cabin_bed} "${o.name_tag}" · POB ${p.cabinBed} "${p.name}"`,
+                };
+            }
+        }
+    }
+    if (bestBed) return { status: 'review', o: bestBed.o, reason: bestBed.reason };
+
+    // ⚠️ ชื่อเจอในห้องอื่น
+    let bestElsewhere = null;
+    let bestElseScore = 0;
+    for (const o of ocrResults) {
+        if (normalizeKey(o.cabin_bed) === pKey) continue;
+        const nameSim = nameSimilarity(p.name, o.name_tag);
+        if (nameSim >= NAME_MATCH_MIN && nameSim > bestElseScore) {
+            bestElseScore = nameSim;
+            bestElsewhere = {
+                o,
+                reason: `ชื่อเจอในห้องอื่น: ในรูป ${o.cabin_bed} "${o.name_tag}" · POB ${p.cabinBed} "${p.name}"`,
+            };
+        }
+    }
+    if (bestElsewhere) return { status: 'review', o: bestElsewhere.o, reason: bestElsewhere.reason };
+
+    // ❌ ไม่มีในรูป
+    return { status: 'absent', o: null, reason: null };
 }
 
 function matchAndShow() {
-    const usedOcr = new Set();
-    const allPeople = [];
     for (const sec of Object.keys(pobData)) {
-        for (const p of pobData[sec]) allPeople.push(p);
-    }
-
-    for (const p of allPeople) {
-        const pKey = normalizeKey(p.cabinBed);
-        const idx = ocrResults.findIndex((o, i) =>
-            !usedOcr.has(i) && normalizeKey(o.cabin_bed) === pKey
-        );
-        if (idx >= 0) {
-            usedOcr.add(idx);
-            const o = ocrResults[idx];
-            p.matchStatus = 'ok';
-            p.sourceFile = o.sourceFile;
-            p.reviewReason = null;
-            p.ocrCabin = o.cabin_bed;
-            p.ocrName = o.name_tag;
+        for (const p of pobData[sec]) {
+            const r = classifyPerson(p);
+            p.matchStatus = r.status;
+            p.sourceFile = r.o?.sourceFile ?? null;
+            p.reviewReason = r.reason;
+            p.ocrCabin = r.o?.cabin_bed ?? null;
+            p.ocrName = r.o?.name_tag ?? null;
         }
     }
-
-    for (const p of allPeople) {
-        if (p.matchStatus === 'ok') continue;
-        const candidates = ocrResults
-            .map((o, i) => ({ o, i }))
-            .filter(x => !usedOcr.has(x.i));
-        const review = findBestReview(p, candidates);
-        if (review) {
-            usedOcr.add(review.i);
-            p.matchStatus = 'review';
-            p.sourceFile = review.o.sourceFile;
-            p.reviewReason = review.reason;
-            p.ocrCabin = review.o.cabin_bed;
-            p.ocrName = review.o.name_tag;
-        } else {
-            p.matchStatus = 'absent';
-            p.sourceFile = null;
-            p.reviewReason = null;
-            p.ocrCabin = null;
-            p.ocrName = null;
-        }
-    }
-
+    populateCabinFilter();
     renderUI();
+}
+
+function populateCabinFilter() {
+    const bases = new Set();
+    for (const sec of Object.keys(pobData)) {
+        for (const p of pobData[sec]) {
+            const parts = parseCabinParts(p.cabinBed);
+            if (parts.base) bases.add(parts.base);
+        }
+    }
+    const sel = document.getElementById('filterCabin');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="ALL">ทุกห้อง</option>' +
+        [...bases].sort().map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+    sel.value = [...bases, 'ALL'].includes(cur) ? cur : 'ALL';
+}
+
+function personPassesFilter(p) {
+    const cabin = document.getElementById('filterCabin').value;
+    const nameQ = document.getElementById('filterName').value.trim().toUpperCase();
+    if (cabin !== 'ALL') {
+        const base = parseCabinParts(p.cabinBed).base;
+        if (base !== cabin) return false;
+    }
+    if (nameQ && !String(p.name || '').toUpperCase().includes(nameQ)) return false;
+    return true;
 }
 
 function sectionCounts(arr) {
@@ -494,8 +531,12 @@ function renderPersonRow(p) {
     </div>`;
 }
 
+document.getElementById('filterCabin').addEventListener('change', () => renderUI());
+document.getElementById('filterName').addEventListener('input', () => renderUI());
+
 function renderUI() {
     document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('filterBar').classList.remove('hidden');
 
     function fmtCounts(arr, elId) {
         const c = sectionCounts(arr);
@@ -522,15 +563,29 @@ function renderUI() {
 
     const order = { review: 0, absent: 1, ok: 2 };
     let html = '';
+    let shownTotal = 0;
     for (const { key, label } of sections) {
-        const list = [...pobData[key]].sort((a, b) => order[a.matchStatus] - order[b.matchStatus]);
+        const list = [...pobData[key]]
+            .filter(personPassesFilter)
+            .sort((a, b) => order[a.matchStatus] - order[b.matchStatus]);
+        if (!list.length) continue;
+        shownTotal += list.length;
         const c = sectionCounts(list);
         html += `<div style="font-size:0.7rem;font-weight:700;color:#94a3b8;margin:1.25rem 0 0.5rem;text-transform:uppercase">
             ${label} — ✅ ${c.ok} · ⚠️ ${c.review} · ❌ ${c.absent}
+            <span style="opacity:.6;font-weight:400"> (แสดง ${list.length})</span>
         </div>`;
         for (const p of list) html += renderPersonRow(p);
     }
+    if (!html) {
+        html = '<div style="text-align:center;color:#94a3b8;padding:1.5rem">ไม่พบรายชื่อตามตัวกรอง</div>';
+    }
     document.getElementById('results').innerHTML = html;
+    const hint = document.getElementById('filterResultHint');
+    if (hint) {
+        hint.textContent = (shownTotal < all.length && (document.getElementById('filterCabin').value !== 'ALL' || document.getElementById('filterName').value.trim()))
+            ? `แสดง ${shownTotal} จาก ${all.length} คน` : '';
+    }
 }
 </script>
 </body>
