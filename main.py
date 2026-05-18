@@ -120,10 +120,11 @@ def parse_ocr(raw_text: str) -> list:
         cabin_raw, _, name_raw = line.partition("|")
         cabin_raw = cabin_raw.strip().upper()
         name_raw  = name_raw.strip().upper()
-        m = re.search(r'B-?(\d+)([A-D])\b', cabin_raw)
-        if m:
-            cabin_id  = f"B-{m.group(1)}"
-            bed       = m.group(2)
+        # D617B, D-617B, B401A, B-401A — use last match (cabin id is usually at end)
+        matches = re.findall(r'([A-Z])-?(\d+)([A-D])\b', cabin_raw)
+        if matches:
+            letter, num, bed = matches[-1]
+            cabin_id  = f"{letter}-{num}"
             cabin_bed = f"{cabin_id}{bed}"
         else:
             cabin_id, bed, cabin_bed = cabin_raw, "", cabin_raw

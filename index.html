@@ -31,6 +31,13 @@
         เริ่มการตรวจเช็ก
     </button>
 
+    <!-- Per-image OCR summary -->
+    <div id="imageSummary" class="hidden bg-slate-800 rounded-xl border border-blue-700/50 overflow-hidden">
+        <div class="text-[10px] text-blue-400 font-bold px-4 pt-3 uppercase">จำนวนชื่อที่อ่านได้ต่อรูป</div>
+        <div id="imageSummaryRows" class="p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+        <div id="imageSummaryTotal" class="px-4 pb-3 text-xs text-slate-400 font-bold border-t border-slate-700 pt-2"></div>
+    </div>
+
     <!-- Model status bar -->
     <div id="modelStatus" class="hidden bg-slate-800 rounded-xl border border-slate-600 overflow-hidden">
         <div class="text-[10px] text-slate-500 font-bold px-4 pt-3 uppercase">AI Model ที่ใช้งาน</div>
@@ -163,20 +170,24 @@ async function scanOneImage(file, index) {
         if (data.error) {
             return {
                 index,
+                tagCount: 0,
                 error: data.error,
                 raw: `❌ รูปที่ ${index + 1} ERROR: ${data.error}`,
                 model: '❌ Error',
             };
         }
+        const parsed = data.parsed || [];
         return {
             index,
-            parsed: data.parsed || [],
+            parsed,
+            tagCount: parsed.length,
             raw: data.raw ? `--- รูปที่ ${index + 1} ---\n${data.raw}` : '',
             model: data.model_used || 'Unknown',
         };
     } catch (err) {
         return {
             index,
+            tagCount: 0,
             raw: `❌ รูปที่ ${index + 1} FETCH ERROR: ${err}`,
             model: '❌ Fetch Error',
         };
@@ -225,23 +236,54 @@ async function processImages() {
     );
 
     scanResults.sort((a, b) => a.index - b.index);
+    const imageStats = [];
     for (const r of scanResults) {
         if (r.raw) allRaw.push(r.raw);
-        modelLog.push({ img: r.index + 1, model: r.model || '❌ Error', error: r.error });
+        const count = r.tagCount ?? (r.parsed ? r.parsed.length : 0);
+        imageStats.push({ img: r.index + 1, count, model: r.model || '❌ Error', error: r.error });
+        modelLog.push({ img: r.index + 1, model: r.model || '❌ Error', tagCount: count, error: r.error });
         if (r.parsed) ocrResults = ocrResults.concat(r.parsed);
     }
 
-    // Show model status
+    renderImageSummary(imageStats);
     renderModelStatus();
 
-    // Show debug
     document.getElementById('debugBox').classList.remove('hidden');
-    document.getElementById('ocrCount').innerText = `อ่านได้ ${ocrResults.length} tags`;
+    const perImg = imageStats.map(s => `รูป${s.img}:${s.count}`).join(' · ');
+    document.getElementById('ocrCount').innerText = `รวม ${ocrResults.length} ชื่อ · ${perImg}`;
     document.getElementById('debugText').textContent = allRaw.join('\n\n');
 
     matchAndShow();
     btn.disabled = false;
     btn.innerText = 'เริ่มการตรวจเช็กอีกครั้ง';
+}
+
+// ===================== IMAGE SUMMARY =====================
+function renderImageSummary(imageStats) {
+    const box = document.getElementById('imageSummary');
+    if (!imageStats.length) {
+        box.classList.add('hidden');
+        return;
+    }
+    box.classList.remove('hidden');
+    const total = imageStats.reduce((s, x) => s + x.count, 0);
+    let html = '';
+    for (const s of imageStats) {
+        const cls = s.error
+            ? 'bg-red-500/10 border-red-500/30 text-red-300'
+            : s.count > 0
+                ? 'bg-blue-500/10 border-blue-500/30 text-blue-200'
+                : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300';
+        html += `
+        <div class="text-center p-2 rounded-lg border text-xs ${cls}">
+            <div class="text-[10px] text-slate-400">รูปที่ ${s.img}</div>
+            <div class="text-lg font-black">${s.error ? '❌' : s.count}</div>
+            <div class="text-[10px] opacity-70">${s.error ? 'error' : 'ชื่อ'}</div>
+        </div>`;
+    }
+    document.getElementById('imageSummaryRows').innerHTML = html;
+    document.getElementById('imageSummaryTotal').innerText =
+        `รวมทุกรูป: ${total} ชื่อ จาก ${imageStats.length} รูป`;
 }
 
 // ===================== MODEL STATUS =====================
@@ -264,10 +306,12 @@ function renderModelStatus() {
     let html = '';
     for (const entry of modelLog) {
         const badge = entry.model.includes('Error') ? '❌' : '🔷 Google';
+        const countLabel = entry.tagCount != null ? `${entry.tagCount} ชื่อ` : '';
         html += `
         <div class="flex justify-between items-center px-2 py-1.5 rounded-lg border text-xs ${badgeClass(entry.model)}">
             <span>รูปที่ ${entry.img}</span>
-            <span class="font-bold">${entry.model}</span>
+            <span class="font-bold text-blue-300">${countLabel}</span>
+            <span class="font-bold truncate max-w-[40%]">${entry.model}</span>
             <span>${badge}</span>
         </div>`;
     }
@@ -276,7 +320,7 @@ function renderModelStatus() {
 
 // ===================== MATCHING =====================
 function normalizeKey(s) {
-    return String(s || '').toUpperCase().replace(/\s/g, '');
+    return String(s || '').toUpperCase().replace(/[\s-]/g, '');
 }
 
 function matchAndShow() {
