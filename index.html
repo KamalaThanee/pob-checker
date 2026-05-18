@@ -14,148 +14,183 @@
         }
         .wrap { max-width: 56rem; margin: 0 auto; padding: 1rem; }
         .card {
-            background: rgba(30, 41, 59, 0.9);
+            background: rgba(30, 41, 59, 0.92);
             border: 1px solid #334155;
-            border-radius: 1.25rem;
-            padding: 1.25rem;
+            border-radius: 1rem;
+            padding: 1rem;
         }
-        .hero { text-align: center; padding: 1.5rem; margin-bottom: 1rem; }
-        .hero h1 { font-size: 1.75rem; font-weight: 900; color: #60a5fa; margin: 0.25rem 0; }
-        .hero p { color: #94a3b8; font-size: 0.875rem; margin: 0; }
-        .grid2 { display: grid; gap: 1rem; }
+        .hero { text-align: center; padding: 1.25rem; }
+        .hero h1 { font-size: 1.6rem; font-weight: 900; color: #60a5fa; margin: 0.2rem 0; }
+        .hero p { color: #94a3b8; font-size: 0.85rem; margin: 0; }
+        .grid2 { display: grid; gap: 0.75rem; }
         @media (min-width: 768px) { .grid2 { grid-template-columns: 1fr 1fr; } }
-        label.lbl { display: block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+        label.lbl { display: block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.4rem; }
         .lbl-excel { color: #93c5fd; }
         .lbl-img { color: #86efac; }
         input[type=file] {
-            width: 100%; font-size: 0.8rem;
-            padding: 0.6rem; border-radius: 0.75rem;
-            border: 1px dashed #475569;
+            width: 100%; font-size: 0.8rem; padding: 0.55rem;
+            border-radius: 0.6rem; border: 1px dashed #475569;
             background: #0f172a; color: #e2e8f0;
         }
         #mainBtn {
-            width: 100%; margin-top: 0.5rem;
-            padding: 1.1rem; font-size: 1.15rem; font-weight: 800;
-            border: none; border-radius: 1rem; cursor: pointer;
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
-            color: white; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+            width: 100%; margin-top: 0.5rem; padding: 1rem;
+            font-size: 1.05rem; font-weight: 800; border: none; border-radius: 0.85rem;
+            cursor: pointer; background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
         }
         #mainBtn:disabled { opacity: 0.6; cursor: wait; }
         .hidden { display: none !important; }
-        .legend { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.7rem; margin: 0.75rem 0; }
-        .legend span { padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid; }
-        .leg-ok { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.4); color: #86efac; }
-        .leg-review { background: rgba(234,179,8,.15); border-color: rgba(234,179,8,.4); color: #fde047; }
-        .leg-absent { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); color: #fca5a5; }
         .row-ok { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.35); color: #bbf7d0; }
         .row-review { background: rgba(234,179,8,.08); border-color: rgba(234,179,8,.4); color: #fef08a; }
         .row-absent { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.35); color: #fecaca; }
         .person-row {
-            display: flex; flex-direction: column; gap: 0.35rem;
-            padding: 0.75rem; border-radius: 0.75rem; border: 1px solid; margin-bottom: 0.35rem;
+            padding: 0.75rem; border-radius: 0.75rem; border: 1px solid;
+            margin-bottom: 0.4rem;
         }
-        .person-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
-        .person-meta { font-size: 0.65rem; opacity: 0.85; line-height: 1.4; }
-        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; text-align: center; }
-        .stat-box { padding: 1rem; border-radius: 0.75rem; background: #1e293b; border-bottom: 3px solid; }
-        .img-tile { text-align: center; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid; font-size: 0.7rem; }
-        pre#debugText { max-height: 12rem; overflow: auto; font-size: 0.68rem; white-space: pre-wrap; color: #cbd5e1; }
-        .filter-bar { display: grid; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .person-meta { font-size: 0.68rem; opacity: 0.9; line-height: 1.45; margin-top: 0.35rem; }
+        .dash-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
+        .dash-tile {
+            padding: 0.85rem 0.5rem; border-radius: 0.75rem; text-align: center;
+            cursor: pointer; border: 1px solid #475569; background: #1e293b;
+            transition: transform .1s, border-color .15s;
+        }
+        .dash-tile:hover { transform: translateY(-2px); border-color: #64748b; }
+        .dash-tile .n { font-size: 1.5rem; font-weight: 900; }
+        .dash-tile .l { font-size: 0.6rem; color: #94a3b8; margin-top: 0.2rem; }
+        .tile-ok { border-bottom: 3px solid #22c55e; }
+        .tile-review { border-bottom: 3px solid #eab308; }
+        .tile-absent { border-bottom: 3px solid #ef4444; }
+        .sec-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.65rem 0.75rem; border-radius: 0.6rem; margin-bottom: 0.35rem;
+            cursor: pointer; background: #1e293b; border: 1px solid #334155;
+        }
+        .sec-row:hover { border-color: #64748b; }
+        .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 0.35rem; }
+        .img-chip {
+            font-size: 0.62rem; padding: 0.35rem; border-radius: 0.4rem;
+            border: 1px solid #334155; text-align: center; background: #0f172a;
+        }
+        .img-chip b { display: block; font-size: 1rem; color: #93c5fd; }
+        .filter-bar { display: grid; gap: 0.6rem; }
         @media (min-width: 640px) { .filter-bar { grid-template-columns: 1fr 1fr; } }
-        .filter-bar label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 0.35rem; }
-        .filter-bar select, .filter-bar input {
-            width: 100%; padding: 0.55rem 0.75rem; border-radius: 0.5rem;
+        .filter-bar label { font-size: 0.62rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+        .filter-bar input {
+            width: 100%; padding: 0.5rem 0.65rem; border-radius: 0.45rem;
             border: 1px solid #475569; background: #0f172a; color: #f1f5f9; font-size: 0.85rem;
         }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+        .btn-sm {
+            font-size: 0.65rem; padding: 0.3rem 0.55rem; border-radius: 0.4rem;
+            border: 1px solid #475569; background: #0f172a; color: #e2e8f0; cursor: pointer;
+        }
+        .btn-sm:hover { background: #334155; }
+        .btn-sm.active { background: #2563eb; border-color: #3b82f6; }
+        .back-btn {
+            background: none; border: none; color: #93c5fd; cursor: pointer;
+            font-size: 0.8rem; font-weight: 700; padding: 0; margin-bottom: 0.75rem;
+        }
+        details summary { cursor: pointer; font-size: 0.7rem; color: #94a3b8; font-weight: 700; }
+        pre#debugText { max-height: 10rem; overflow: auto; font-size: 0.65rem; white-space: pre-wrap; color: #cbd5e1; }
+        .override-tag { font-size: 0.6rem; color: #93c5fd; margin-left: 0.35rem; }
     </style>
-    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-<div class="wrap space-y-4">
+<div class="wrap">
 
     <div class="card hero">
-        <div style="font-size:2rem">🚢</div>
+        <div style="font-size:1.75rem">🚢</div>
         <h1>POB MUSTER CHECKER</h1>
-        <p>Kamala Thanee · 180 คน · Google AI Studio</p>
+        <p>Kamala Thanee · Google AI Studio</p>
     </div>
 
     <div class="grid2">
         <div class="card">
             <label class="lbl lbl-excel" for="excelInput">1. ไฟล์รายชื่อ (Excel)</label>
             <input type="file" id="excelInput" accept=".xlsx">
-            <div id="excelInfo" style="margin-top:0.5rem;font-size:0.75rem;color:#93c5fd"></div>
+            <div id="excelInfo" style="margin-top:0.4rem;font-size:0.72rem;color:#93c5fd"></div>
         </div>
         <div class="card">
-            <label class="lbl lbl-img" for="imageInput">2. รูปบอร์ด (เลือกหลายรูปได้)</label>
+            <label class="lbl lbl-img" for="imageInput">2. รูปบอร์ด</label>
             <input type="file" id="imageInput" accept="image/*" multiple>
-            <div id="imageFileList" style="margin-top:0.5rem;font-size:0.7rem;color:#86efac"></div>
+            <div id="imageFileList" style="margin-top:0.4rem;font-size:0.68rem;color:#86efac"></div
         </div>
     </div>
 
     <button type="button" onclick="processImages()" id="mainBtn">เริ่มการตรวจเช็ก</button>
 
-    <div class="legend hidden" id="legendBox">
-        <span class="leg-ok">✅ เจอตรง (ห้อง+เตียง+ชื่อ)</span>
-        <span class="leg-review">⚠️ ตรวจสอบ — ห้องหรือชื่อไม่ตรง</span>
-        <span class="leg-absent">❌ ไม่พบในรูปเลย</span>
-    </div>
+    <div id="resultsPanel" class="hidden" style="margin-top:1rem">
 
-    <div id="imageSummary" class="hidden card">
-        <div style="font-size:0.65rem;font-weight:700;color:#60a5fa;text-transform:uppercase">จำนวนชื่อที่อ่านได้ต่อรูป (ชื่อไฟล์)</div>
-        <div id="imageSummaryRows" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(7rem,1fr));gap:0.5rem;margin-top:0.75rem"></div>
-        <div id="imageSummaryTotal" style="margin-top:0.75rem;padding-top:0.5rem;border-top:1px solid #334155;font-size:0.75rem;color:#94a3b8;font-weight:600"></div>
-    </div>
-
-    <div id="modelStatus" class="hidden card">
-        <div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">AI Model ที่ใช้งาน</div>
-        <div id="modelRows" style="margin-top:0.5rem"></div>
-    </div>
-
-    <div id="dashboard" class="hidden">
-        <div class="stat-grid" style="margin-bottom:0.75rem">
-            <div class="stat-box" style="border-color:#3b82f6">
-                <div style="font-size:0.6rem;color:#94a3b8">MARINE</div>
-                <div id="c-marine" style="font-size:1.1rem;font-weight:800">0/0</div>
+        <!-- DASHBOARD -->
+        <div id="viewDashboard">
+            <div class="dash-tiles">
+                <div class="dash-tile tile-ok" onclick="openList('ok')">
+                    <div class="n" id="dashOk">0</div>
+                    <div class="l">✅ เจอตรง</div
+                </div>
+                <div class="dash-tile tile-review" onclick="openList('review')">
+                    <div class="n" id="dashReview">0</div>
+                    <div class="l">⚠️ ตรวจสอบ</div>
+                </div>
+                <div class="dash-tile tile-absent" onclick="openList('absent')">
+                    <div class="n" id="dashAbsent">0</div>
+                    <div class="l">❌ ไม่พบในรูป</div>
+                </div>
             </div>
-            <div class="stat-box" style="border-color:#a855f7">
-                <div style="font-size:0.6rem;color:#94a3b8">CATERING</div>
-                <div id="c-catering" style="font-size:1.1rem;font-weight:800">0/0</div>
-            </div>
-            <div class="stat-box" style="border-color:#f97316">
-                <div style="font-size:0.6rem;color:#94a3b8">PASSENGER</div>
-                <div id="c-pax" style="font-size:1.1rem;font-weight:800">0/0</div>
-            </div>
-        </div>
-        <div class="card" style="text-align:center;font-size:0.85rem;font-weight:700" id="totalSummary"></div>
-    </div>
-    <div id="filterBar" class="hidden card filter-bar">
-        <div>
-            <label for="filterCabin">กรองเลขห้อง</label>
-            <select id="filterCabin"><option value="ALL">ทุกห้อง</option></select>
-        </div>
-        <div>
-            <label for="filterName">ค้นหาชื่อ</label>
-            <input type="text" id="filterName" placeholder="พิมพ์ชื่อ เช่น TANAWAT">
-        </div>
-        <div id="filterResultHint" style="grid-column:1/-1;font-size:0.7rem;color:#94a3b8;min-height:1em"></div>
-    </div>
 
-    <div id="debugBox" class="hidden card" style="border-color:#a16207">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-            <span style="font-weight:700;color:#fbbf24;font-size:0.75rem">🔍 Raw OCR (debug)</span>
-            <span id="ocrCount" style="font-size:0.7rem;color:#94a3b8"></span>
-        </div>
-        <pre id="debugText"></pre>
-    </div>
+            <div class="card" style="margin-bottom:0.75rem">
+                <div style="font-size:0.65rem;color:#94a3b8;font-weight:700;margin-bottom:0.5rem">แยกตามฝ่าย (กดเพื่อดูรายชื่อ)</div>
+                <div id="sectionRows"></div>
+            </div>
 
-    <div id="results"></div>
+            <details class="card" style="margin-bottom:0.75rem">
+                <summary>📷 สรุปรูปที่สแกน (<span id="imgScanCount">0</span> ไฟล์ · <span id="imgTagTotal">0</span> ชื่อ)</summary>
+                <div id="imageSummaryRows" class="img-grid" style="margin-top:0.6rem"></div>
+            </details>
+
+            <details class="card">
+                <summary>🔍 Raw OCR (debug)</summary>
+                <pre id="debugText" style="margin-top:0.5rem"></pre>
+            </details>
+        </div>
+
+        <!-- LIST -->
+        <div id="viewList" class="hidden">
+            <button type="button" class="back-btn" onclick="showDashboard()">← กลับ Dashboard</button>
+            <div style="font-size:0.85rem;font-weight:800;margin-bottom:0.5rem" id="listTitle"></div
+
+            <div class="card filter-bar" style="margin-bottom:0.75rem">
+                <div>
+                    <label for="filterCabin">ห้อง / เตียง (พิมพ์ค้นหา)</label>
+                    <input type="text" id="filterCabin" list="cabinDatalist" placeholder="เช่น B434 หรือ B434C">
+                    <datalist id="cabinDatalist"></datalist>
+                </div>
+                <div>
+                    <label for="filterName">ค้นหาชื่อ</label>
+                    <input type="text" id="filterName" placeholder="เช่น THITIPOOM">
+                </div>
+                <div id="filterResultHint" style="grid-column:1/-1;font-size:0.68rem;color:#94a3b8"></div>
+            </div>
+
+            <div id="personList"></div>
+        </div>
+    </div
 </div>
 
 <script>
 let pobData = { marine: [], catering: [], passenger: [] };
 let ocrResults = [];
-let modelLog = [];
 let xlsxPromise = null;
+let uiView = 'dashboard';
+let listFilterStatus = null;
+let listFilterSection = null;
+const NAME_MATCH_MIN = 0.55;
+
+const SECTIONS = [
+    { key: 'marine', label: 'MARINE CREW', color: '#3b82f6' },
+    { key: 'catering', label: 'CATERING CREW', color: '#a855f7' },
+    { key: 'passenger', label: 'PASSENGER / OPERATION', color: '#f97316' },
+];
 
 function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -175,54 +210,50 @@ function loadXLSX() {
     return xlsxPromise;
 }
 
+function newPerson(row) {
+    return {
+        cabin: row.cabinId, bed: row.bed, cabinBed: row.cabinBed, name: row.name,
+        matchStatus: 'absent', userOverride: null,
+        sourceFile: null, reviewReason: null, ocrCabin: null, ocrName: null,
+    };
+}
+
 document.getElementById('imageInput').onchange = (e) => {
     const names = Array.from(e.target.files).map(f => f.name);
-    const el = document.getElementById('imageFileList');
-    el.textContent = names.length ? `📷 ${names.length} รูป: ${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}` : '';
+    document.getElementById('imageFileList').textContent =
+        names.length ? `📷 ${names.length} รูป` : '';
 };
 
 document.getElementById('excelInput').onchange = async (e) => {
     const XLSX = await loadXLSX();
     const buf = await e.target.files[0].arrayBuffer();
-    const wb = XLSX.read(buf);
-    const ws = wb.Sheets['POB'];
+    const ws = XLSX.read(buf).Sheets['POB'];
     if (!ws) return alert('ไม่พบ Sheet ชื่อ "POB"');
-
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
     pobData = { marine: [], catering: [], passenger: [] };
 
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+    for (const row of rows) {
         const colA = String(row[0] || '').trim();
         const colB = String(row[1] || '').trim();
         const colC = String(row[2] || '').trim();
         const colD = String(row[3] || '').trim().toUpperCase();
         const colG = String(row[6] || '').trim().toUpperCase();
-
         if (colD.includes('HOT BED') || colD.includes('ONE DAY') || colA === 'SUMMARY') break;
-        if (!/^\d+$/.test(colA)) continue;
-        if (!colB || !colC || !colD) continue;
+        if (!/^\d+$/.test(colA) || !colB || !colC || !colD) continue;
         if (['NAME','BARGE CREW','CATERING','PASSENGER','SECTION'].includes(colD)) continue;
-
-        const cabinId  = colB.toUpperCase().replace(/\s/g, '');
-        const bed      = colC.toUpperCase();
-        const cabinBed = cabinId + bed;
-
-        let sec;
-        if (colG === 'MARINE CREW')        sec = 'marine';
-        else if (colG === 'CATERING CREW') sec = 'catering';
-        else                               sec = 'passenger';
-
-        pobData[sec].push({
-            cabin: cabinId, bed, cabinBed, name: colD,
-            matchStatus: 'absent', sourceFile: null, reviewReason: null, ocrCabin: null, ocrName: null
-        });
+        const cabinId = colB.toUpperCase().replace(/\s/g, '');
+        const bed = colC.toUpperCase();
+        let sec = colG === 'MARINE CREW' ? 'marine' : colG === 'CATERING CREW' ? 'catering' : 'passenger';
+        pobData[sec].push(newPerson({ cabinId, bed, cabinBed: cabinId + bed, name: colD }));
     }
-
-    const t = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
-    document.getElementById('excelInfo').innerText =
-        `✅ Marine ${pobData.marine.length} · Catering ${pobData.catering.length} · Passenger ${pobData.passenger.length} · รวม ${t} คน`;
+    const t = allPeople().length;
+    document.getElementById('excelInfo').textContent =
+        `โหลดแล้ว ${t} คน (Marine ${pobData.marine.length} · Catering ${pobData.catering.length} · Passenger ${pobData.passenger.length})`;
 };
+
+function allPeople() {
+    return [...pobData.marine, ...pobData.catering, ...pobData.passenger];
+}
 
 async function resizeImage(file, maxWidth = 1500) {
     return new Promise(resolve => {
@@ -230,147 +261,73 @@ async function resizeImage(file, maxWidth = 1500) {
         const url = URL.createObjectURL(file);
         img.onload = () => {
             const scale = Math.min(1, maxWidth / img.width);
-            const canvas = document.createElement('canvas');
-            canvas.width  = img.width  * scale;
-            canvas.height = img.height * scale;
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(
-                blob => resolve(new File([blob], file.name, { type: 'image/jpeg' })),
-                'image/jpeg', 0.85
-            );
+            const c = document.createElement('canvas');
+            c.width = img.width * scale; c.height = img.height * scale;
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            c.toBlob(b => resolve(new File([b], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.85);
             URL.revokeObjectURL(url);
         };
         img.src = url;
     });
 }
 
-const OCR_CONCURRENCY = 2;
-
 async function scanOneImage(file) {
-    const resized = await resizeImage(file);
     const fd = new FormData();
-    fd.append('files', resized);
+    fd.append('files', await resizeImage(file));
     const fileName = file.name;
     try {
-        const res  = await fetch('/api/read-image', { method: 'POST', body: fd });
+        const res = await fetch('/api/read-image', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.error) {
-            return {
-                fileName, tagCount: 0, error: data.error,
-                raw: `❌ ${fileName} ERROR: ${data.error}`,
-                model: '❌ Error', parsed: [],
-            };
+            return { fileName, tagCount: 0, error: data.error, parsed: [],
+                raw: `❌ ${fileName}: ${data.error}`, model: 'Error' };
         }
         const parsed = (data.parsed || []).map(t => ({ ...t, sourceFile: fileName }));
         return {
             fileName, parsed, tagCount: parsed.length,
             raw: data.raw ? `--- ${fileName} ---\n${data.raw}` : '',
-            model: data.model_used || 'Unknown',
+            model: data.model_used || '?',
         };
     } catch (err) {
-        return {
-            fileName, tagCount: 0, parsed: [],
-            raw: `❌ ${fileName} FETCH ERROR: ${err}`,
-            model: '❌ Fetch Error',
-        };
+        return { fileName, tagCount: 0, parsed: [], raw: `❌ ${fileName}: ${err}`, model: 'Error' };
     }
-}
-
-async function runWithConcurrency(items, limit, fn, onProgress) {
-    const results = new Array(items.length);
-    let next = 0, done = 0;
-    async function worker() {
-        while (next < items.length) {
-            const i = next++;
-            results[i] = await fn(items[i], i);
-            done++;
-            onProgress(done, items.length);
-        }
-    }
-    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
-    return results;
 }
 
 async function processImages() {
     const files = Array.from(document.getElementById('imageInput').files);
     if (!files.length) return alert('กรุณาเลือกรูปภาพ');
-    const total = pobData.marine.length + pobData.catering.length + pobData.passenger.length;
-    if (!total) return alert('กรุณาโหลดไฟล์ Excel ก่อน');
+    if (!allPeople().length) return alert('กรุณาโหลด Excel ก่อน');
 
     const btn = document.getElementById('mainBtn');
     btn.disabled = true;
     ocrResults = [];
-    modelLog = [];
     let allRaw = [];
-
-    const scanResults = await runWithConcurrency(
-        files, OCR_CONCURRENCY,
-        (file) => scanOneImage(file),
-        (done, count) => { btn.innerText = `⏳ สแกน ${done}/${count} รูป...`; }
-    );
-
     const imageStats = [];
-    for (const r of scanResults) {
-        if (r.raw) allRaw.push(r.raw);
-        imageStats.push({
-            fileName: r.fileName,
-            count: r.tagCount ?? 0,
-            model: r.model || '❌ Error',
-            error: r.error,
-        });
-        modelLog.push({
-            fileName: r.fileName,
-            model: r.model || '❌ Error',
-            tagCount: r.tagCount ?? 0,
-            error: r.error,
-        });
-        if (r.parsed?.length) ocrResults = ocrResults.concat(r.parsed);
-    }
 
-    document.getElementById('legendBox').classList.remove('hidden');
-    renderImageSummary(imageStats);
-    renderModelStatus();
-    document.getElementById('debugBox').classList.remove('hidden');
-    document.getElementById('ocrCount').innerText =
-        `รวม ${ocrResults.length} ชื่อ · ` + imageStats.map(s => `${s.fileName}:${s.count}`).join(' · ');
+    let done = 0;
+    const queue = [...files];
+    const workers = 2;
+    async function worker() {
+        while (queue.length) {
+            const file = queue.shift();
+            const r = await scanOneImage(file);
+            imageStats.push(r);
+            if (r.raw) allRaw.push(r.raw);
+            if (r.parsed?.length) ocrResults.push(...r.parsed);
+            btn.textContent = `⏳ สแกน ${++done}/${files.length}...`;
+        }
+    }
+    await Promise.all(Array.from({ length: workers }, worker));
+
+    imageStats.sort((a, b) => a.fileName.localeCompare(b.fileName));
+    allPeople().forEach(p => { p.userOverride = null; });
+    matchAll();
+    renderImageChips(imageStats);
     document.getElementById('debugText').textContent = allRaw.join('\n\n');
-
-    matchAndShow();
+    document.getElementById('resultsPanel').classList.remove('hidden');
+    showDashboard();
     btn.disabled = false;
-    btn.innerText = 'เริ่มการตรวจเช็กอีกครั้ง';
-}
-
-function renderImageSummary(imageStats) {
-    const box = document.getElementById('imageSummary');
-    if (!imageStats.length) { box.classList.add('hidden'); return; }
-    box.classList.remove('hidden');
-    const total = imageStats.reduce((s, x) => s + x.count, 0);
-    let html = '';
-    for (const s of imageStats) {
-        const cls = s.error ? 'row-absent' : s.count > 0 ? 'row-ok' : 'row-review';
-        html += `<div class="img-tile ${cls}" title="${esc(s.fileName)}">
-            <div style="font-size:0.6rem;opacity:.7;word-break:break-all;max-height:2.5em;overflow:hidden">${esc(s.fileName)}</div>
-            <div style="font-size:1.25rem;font-weight:900">${s.error ? '❌' : s.count}</div>
-            <div style="opacity:.7">${s.error ? 'error' : 'ชื่อ'}</div>
-        </div>`;
-    }
-    document.getElementById('imageSummaryRows').innerHTML = html;
-    document.getElementById('imageSummaryTotal').innerText =
-        `รวมทุกรูป: ${total} ชื่อ จาก ${imageStats.length} ไฟล์`;
-}
-
-function renderModelStatus() {
-    const box = document.getElementById('modelStatus');
-    box.classList.remove('hidden');
-    let html = '';
-    for (const entry of modelLog) {
-        html += `<div style="display:flex;justify-content:space-between;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid #334155;font-size:0.7rem">
-            <span style="color:#93c5fd;max-width:35%;word-break:break-all">${esc(entry.fileName)}</span>
-            <span style="font-weight:700">${entry.tagCount} ชื่อ</span>
-            <span style="opacity:.8;truncate">${esc(entry.model)}</span>
-        </div>`;
-    }
-    document.getElementById('modelRows').innerHTML = html;
+    btn.textContent = 'เริ่มการตรวจเช็กอีกครั้ง';
 }
 
 function normalizeKey(s) {
@@ -384,83 +341,78 @@ function parseCabinParts(cabinBed) {
     return { letter: '', num: '', bed: '', base: n, full: n };
 }
 
-function nameSimilarity(excelName, ocrName) {
-    const a = String(excelName || '').split(/\s+/).filter(Boolean);
-    const b = String(ocrName || '').split(/\s+/).filter(Boolean);
-    if (!a.length || !b.length) return 0;
-    const firstMatch = a[0] === b[0] || b[0].startsWith(a[0]) || a[0].startsWith(b[0]);
-    if (!firstMatch) return 0;
-    if (a.length >= 2 && b.length >= 2) {
-        const la = a[a.length - 1], lb = b[b.length - 1];
-        if (la === lb || lb.startsWith(la) || la.startsWith(lb)) return 1;
+function nameSimilarity(a, b) {
+    const x = String(a || '').split(/\s+/).filter(Boolean);
+    const y = String(b || '').split(/\s+/).filter(Boolean);
+    if (!x.length || !y.length) return 0;
+    if (x[0] !== y[0] && !y[0].startsWith(x[0]) && !x[0].startsWith(y[0])) return 0;
+    if (x.length >= 2 && y.length >= 2) {
+        const lx = x[x.length - 1], ly = y[y.length - 1];
+        if (lx === ly || ly.startsWith(lx) || lx.startsWith(ly)) return 1;
         return 0.65;
     }
     return 0.55;
 }
 
-const NAME_MATCH_MIN = 0.55;
+/** หา OCR ที่ชื่อตรงกับคนนี้ (ใช้จอง — ไม่ให้คนอื่นไปจับป้ายเดียวกันแบบผิด) */
+function findNameMatchOcr(p) {
+    let best = null, bestScore = 0;
+    for (const o of ocrResults) {
+        const sim = nameSimilarity(p.name, o.name_tag);
+        if (sim >= NAME_MATCH_MIN && sim > bestScore) {
+            bestScore = sim;
+            best = o;
+        }
+    }
+    return best;
+}
 
 function classifyPerson(p) {
     const pKey = normalizeKey(p.cabinBed);
     const pParts = parseCabinParts(p.cabinBed);
 
-    // ✅ ห้อง + เตียง + ชื่อ ตรง
+    // ✅ ห้อง + เตียง + ชื่อ
     for (const o of ocrResults) {
         if (normalizeKey(o.cabin_bed) === pKey && nameSimilarity(p.name, o.name_tag) >= NAME_MATCH_MIN) {
             return { status: 'ok', o, reason: null };
         }
     }
 
-    // ⚠️ ห้อง+เตียงตรง แต่ชื่อในรูปเป็นคนอื่น (เช่น B434C เป็น TANAWAT แต่ POB เป็น THITIPOOM)
-    for (const o of ocrResults) {
-        if (normalizeKey(o.cabin_bed) === pKey) {
-            return {
-                status: 'review',
-                o,
-                reason: `ห้อง+เตียงตรงแต่ชื่อในรูปไม่ตรง: ในรูป "${o.name_tag || '?'}" · POB "${p.name}"`,
-            };
-        }
-    }
+    const nameHit = findNameMatchOcr(p);
 
-    // ⚠️ ชื่อตรง แต่เตียง/ห้องในรูปต่าง (เช่น POB B434B TANAWAT แต่รูป B434C TANAWAT)
-    let bestBed = null;
-    let bestBedScore = 0;
-    for (const o of ocrResults) {
-        const oParts = parseCabinParts(o.cabin_bed);
-        const nameSim = nameSimilarity(p.name, o.name_tag);
-        if (pParts.base && pParts.base === oParts.base && pParts.bed !== oParts.bed && nameSim >= NAME_MATCH_MIN) {
-            if (nameSim > bestBedScore) {
-                bestBedScore = nameSim;
-                bestBed = {
-                    o,
-                    reason: `เตียงไม่ตรง (ชื่อตรง): ในรูป ${o.cabin_bed} "${o.name_tag}" · POB ${p.cabinBed} "${p.name}"`,
+    // ⚠️ ชื่อเจอในรูป แต่ห้อง/เตียงไม่ตรง POB
+    if (nameHit) {
+        const oKey = normalizeKey(nameHit.cabin_bed);
+        if (oKey !== pKey) {
+            const oParts = parseCabinParts(nameHit.cabin_bed);
+            if (pParts.base === oParts.base && pParts.bed !== oParts.bed) {
+                return {
+                    status: 'review', o: nameHit,
+                    reason: `ชื่อตรงแต่เตียงไม่ตรง: ในรูป ${nameHit.cabin_bed} "${nameHit.name_tag}" · POB ${p.cabinBed} "${p.name}"`,
                 };
             }
-        }
-    }
-    if (bestBed) return { status: 'review', o: bestBed.o, reason: bestBed.reason };
-
-    // ⚠️ ชื่อเจอในห้องอื่น
-    let bestElsewhere = null;
-    let bestElseScore = 0;
-    for (const o of ocrResults) {
-        if (normalizeKey(o.cabin_bed) === pKey) continue;
-        const nameSim = nameSimilarity(p.name, o.name_tag);
-        if (nameSim >= NAME_MATCH_MIN && nameSim > bestElseScore) {
-            bestElseScore = nameSim;
-            bestElsewhere = {
-                o,
-                reason: `ชื่อเจอในห้องอื่น: ในรูป ${o.cabin_bed} "${o.name_tag}" · POB ${p.cabinBed} "${p.name}"`,
+            return {
+                status: 'review', o: nameHit,
+                reason: `ชื่อตรงแต่ห้องไม่ตรง: ในรูป ${nameHit.cabin_bed} "${nameHit.name_tag}" · POB ${p.cabinBed} "${p.name}"`,
             };
         }
     }
-    if (bestElsewhere) return { status: 'review', o: bestElsewhere.o, reason: bestElsewhere.reason };
 
-    // ❌ ไม่มีในรูป
-    return { status: 'absent', o: null, reason: null };
+    // ❌ ไม่พบชื่อในรูป (ไม่จับแค่เลขห้องบนป้าย)
+    const occupant = ocrResults.find(o => normalizeKey(o.cabin_bed) === pKey);
+    if (occupant && nameSimilarity(p.name, occupant.name_tag) < NAME_MATCH_MIN) {
+        return {
+            status: 'absent', o: null,
+            reason: `ไม่พบชื่อ "${p.name}" ในรูป — ป้าย ${p.cabinBed} ในรูปเป็น "${occupant.name_tag}" (${occupant.sourceFile})`,
+        };
+    }
+    return {
+        status: 'absent', o: null,
+        reason: `ไม่พบชื่อ "${p.name}" ในรูป (POB ${p.cabinBed})`,
+    };
 }
 
-function matchAndShow() {
+function matchAll() {
     for (const sec of Object.keys(pobData)) {
         for (const p of pobData[sec]) {
             const r = classifyPerson(p);
@@ -471,122 +423,162 @@ function matchAndShow() {
             p.ocrName = r.o?.name_tag ?? null;
         }
     }
-    populateCabinFilter();
-    renderUI();
+    populateCabinDatalist();
 }
 
-function populateCabinFilter() {
-    const bases = new Set();
-    for (const sec of Object.keys(pobData)) {
-        for (const p of pobData[sec]) {
-            const parts = parseCabinParts(p.cabinBed);
-            if (parts.base) bases.add(parts.base);
-        }
+function effectiveStatus(p) {
+    return p.userOverride ?? p.matchStatus;
+}
+
+function countByStatus(arr, status) {
+    return arr.filter(p => effectiveStatus(p) === status).length;
+}
+
+function populateCabinDatalist() {
+    const dl = document.getElementById('cabinDatalist');
+    const vals = new Set();
+    for (const p of allPeople()) {
+        vals.add(p.cabinBed);
+        const parts = parseCabinParts(p.cabinBed);
+        if (parts.base) vals.add(parts.base);
+        if (parts.letter && parts.num) vals.add(`${parts.letter}-${parts.num}`);
     }
-    const sel = document.getElementById('filterCabin');
-    const cur = sel.value;
-    sel.innerHTML = '<option value="ALL">ทุกห้อง</option>' +
-        [...bases].sort().map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
-    sel.value = [...bases, 'ALL'].includes(cur) ? cur : 'ALL';
+    dl.innerHTML = [...vals].sort().map(v => `<option value="${esc(v)}">`).join('');
+}
+
+function renderImageChips(stats) {
+    const total = stats.reduce((s, x) => s + (x.tagCount || 0), 0);
+    document.getElementById('imgScanCount').textContent = stats.length;
+    document.getElementById('imgTagTotal').textContent = total;
+    document.getElementById('imageSummaryRows').innerHTML = stats.map(s => `
+        <div class="img-chip ${s.error ? 'row-absent' : 'row-ok'}" title="${esc(s.model)}">
+            <span style="opacity:.7;word-break:break-all">${esc(s.fileName)}</span>
+            <b>${s.error ? '❌' : s.tagCount}</b>
+        </div>`).join('');
+}
+
+function renderDashboard() {
+    const all = allPeople();
+    document.getElementById('dashOk').textContent = countByStatus(all, 'ok');
+    document.getElementById('dashReview').textContent = countByStatus(all, 'review');
+    document.getElementById('dashAbsent').textContent = countByStatus(all, 'absent');
+
+    document.getElementById('sectionRows').innerHTML = SECTIONS.map(({ key, label, color }) => {
+        const arr = pobData[key];
+        const ok = countByStatus(arr, 'ok');
+        const rev = countByStatus(arr, 'review');
+        const abs = countByStatus(arr, 'absent');
+        return `<div class="sec-row" onclick="openList(null,'${key}')">
+            <span style="font-size:0.75rem;font-weight:700;border-left:3px solid ${color};padding-left:0.5rem">${label}</span>
+            <span style="font-size:0.72rem">✅${ok} ⚠️${rev} ❌${abs} <span style="color:#64748b">/ ${arr.length}</span></span>
+        </div>`;
+    }).join('');
+}
+
+function showDashboard() {
+    uiView = 'dashboard';
+    document.getElementById('viewDashboard').classList.remove('hidden');
+    document.getElementById('viewList').classList.add('hidden');
+    renderDashboard();
+}
+
+function openList(status, section) {
+    listFilterStatus = status;
+    listFilterSection = section || null;
+    uiView = 'list';
+    document.getElementById('viewDashboard').classList.add('hidden');
+    document.getElementById('viewList').classList.remove('hidden');
+    const titles = { ok: '✅ เจอตรง', review: '⚠️ ต้องตรวจสอบ', absent: '❌ ไม่พบในรูป' };
+    let title = status ? titles[status] : 'รายชื่อทั้งหมด';
+    if (section) {
+        const sec = SECTIONS.find(s => s.key === section);
+        title = sec ? sec.label : section;
+    }
+    document.getElementById('listTitle').textContent = title;
+    renderPersonList();
 }
 
 function personPassesFilter(p) {
-    const cabin = document.getElementById('filterCabin').value;
+    const cabinQ = normalizeKey(document.getElementById('filterCabin').value.trim());
     const nameQ = document.getElementById('filterName').value.trim().toUpperCase();
-    if (cabin !== 'ALL') {
+    if (cabinQ) {
+        const pk = normalizeKey(p.cabinBed);
         const base = parseCabinParts(p.cabinBed).base;
-        if (base !== cabin) return false;
+        if (!pk.includes(cabinQ) && !base.includes(cabinQ)) return false;
     }
-    if (nameQ && !String(p.name || '').toUpperCase().includes(nameQ)) return false;
+    if (nameQ && !String(p.name).toUpperCase().includes(nameQ)) return false;
     return true;
 }
 
-function sectionCounts(arr) {
-    return {
-        ok: arr.filter(x => x.matchStatus === 'ok').length,
-        review: arr.filter(x => x.matchStatus === 'review').length,
-        absent: arr.filter(x => x.matchStatus === 'absent').length,
-    };
+function setOverride(p, sec, idx, value) {
+    pobData[sec][idx].userOverride = value;
+    renderPersonList();
+    if (uiView === 'dashboard') renderDashboard();
+    else {
+        document.getElementById('dashOk').textContent = countByStatus(allPeople(), 'ok');
+        document.getElementById('dashReview').textContent = countByStatus(allPeople(), 'review');
+        document.getElementById('dashAbsent').textContent = countByStatus(allPeople(), 'absent');
+    }
 }
 
-function renderPersonRow(p) {
-    const status = p.matchStatus;
-    const cls = status === 'ok' ? 'row-ok' : status === 'review' ? 'row-review' : 'row-absent';
-    const icon = status === 'ok' ? '✅' : status === 'review' ? '⚠️' : '❌';
-    let meta = '';
-    if (status === 'review') {
-        meta = `<div class="person-meta">
-            <div>${esc(p.reviewReason)}</div>
-            <div style="color:#fbbf24">↳ ดูรูป: <b>${esc(p.sourceFile)}</b></div>
-        </div>`;
-    } else if (status === 'ok' && p.sourceFile) {
-        meta = `<div class="person-meta">↳ พบในรูป: <b>${esc(p.sourceFile)}</b></div>`;
-    }
-    return `<div class="person-row ${cls}">
-        <div class="person-top">
-            <span style="font-size:0.875rem"><b>${esc(p.cabinBed)}</b> ${esc(p.name)}</span>
-            <span style="font-size:1.25rem">${icon}</span>
-        </div>
-        ${meta}
-    </div>`;
-}
-
-document.getElementById('filterCabin').addEventListener('change', () => renderUI());
-document.getElementById('filterName').addEventListener('input', () => renderUI());
-
-function renderUI() {
-    document.getElementById('dashboard').classList.remove('hidden');
-    document.getElementById('filterBar').classList.remove('hidden');
-
-    function fmtCounts(arr, elId) {
-        const c = sectionCounts(arr);
-        document.getElementById(elId).innerHTML =
-            `<span style="color:#86efac">${c.ok}</span>/<span>${arr.length}</span>` +
-            (c.review ? ` <span style="color:#fde047;font-size:0.65rem">⚠${c.review}</span>` : '');
-    }
-    fmtCounts(pobData.marine, 'c-marine');
-    fmtCounts(pobData.catering, 'c-catering');
-    fmtCounts(pobData.passenger, 'c-pax');
-
-    const all = [...pobData.marine, ...pobData.catering, ...pobData.passenger];
-    const tc = sectionCounts(all);
-    document.getElementById('totalSummary').innerHTML =
-        `✅ เจอตรง <span style="color:#86efac">${tc.ok}</span> · ` +
-        `⚠️ ตรวจสอบ <span style="color:#fde047">${tc.review}</span> · ` +
-        `❌ ไม่พบ <span style="color:#fca5a5">${tc.absent}</span> · รวม ${all.length} คน`;
-
-    const sections = [
-        { key: 'marine', label: 'MARINE CREW' },
-        { key: 'catering', label: 'CATERING CREW' },
-        { key: 'passenger', label: 'PASSENGER / OPERATION' },
-    ];
-
+function renderPersonList() {
     const order = { review: 0, absent: 1, ok: 2 };
     let html = '';
-    let shownTotal = 0;
-    for (const { key, label } of sections) {
-        const list = [...pobData[key]]
-            .filter(personPassesFilter)
-            .sort((a, b) => order[a.matchStatus] - order[b.matchStatus]);
+    let shown = 0;
+    const totalInFilter = { all: 0 };
+
+    for (const { key, label } of SECTIONS) {
+        if (listFilterSection && listFilterSection !== key) continue;
+        let list = pobData[key].map((p, idx) => ({ p, idx, sec: key }));
+        if (listFilterStatus) list = list.filter(x => effectiveStatus(x.p) === listFilterStatus);
+        list = list.filter(x => personPassesFilter(x.p));
+        list.sort((a, b) => order[effectiveStatus(a.p)] - order[effectiveStatus(b.p)]);
         if (!list.length) continue;
-        shownTotal += list.length;
-        const c = sectionCounts(list);
-        html += `<div style="font-size:0.7rem;font-weight:700;color:#94a3b8;margin:1.25rem 0 0.5rem;text-transform:uppercase">
-            ${label} — ✅ ${c.ok} · ⚠️ ${c.review} · ❌ ${c.absent}
-            <span style="opacity:.6;font-weight:400"> (แสดง ${list.length})</span>
-        </div>`;
-        for (const p of list) html += renderPersonRow(p);
+
+        html += `<div style="font-size:0.68rem;font-weight:700;color:#94a3b8;margin:1rem 0 0.4rem">${label} (${list.length})</div>`;
+        shown += list.length;
+
+        for (const { p, idx, sec } of list) {
+            const st = effectiveStatus(p);
+            const cls = st === 'ok' ? 'row-ok' : st === 'review' ? 'row-review' : 'row-absent';
+            const icon = st === 'ok' ? '✅' : st === 'review' ? '⚠️' : '❌';
+            const auto = p.matchStatus;
+            const overrideLbl = p.userOverride
+                ? `<span class="override-tag">(แก้มือ → ${p.userOverride === 'ok' ? '✅' : '❌'})</span>` : '';
+
+            let meta = '';
+            if (p.reviewReason) meta += `<div class="person-meta">${esc(p.reviewReason)}</div>`;
+            if (p.sourceFile) meta += `<div class="person-meta" style="color:#fbbf24">↳ ดูรูป: <b>${esc(p.sourceFile)}</b></div>`;
+            if (p.userOverride && p.userOverride !== auto) {
+                meta += `<div class="person-meta" style="color:#93c5fd">ระบบแนะนำ: ${auto === 'ok' ? '✅' : auto === 'review' ? '⚠️' : '❌'}</div`;
+            }
+
+            html += `<div class="person-row ${cls}">
+                <div style="display:flex;justify-content:space-between;gap:0.5rem">
+                    <span style="font-size:0.85rem"><b>${esc(p.cabinBed)}</b> ${esc(p.name)}${overrideLbl}</span>
+                    <span style="font-size:1.2rem">${icon}</span>
+                </div>
+                ${meta}
+                <div class="btn-row">
+                    <button type="button" class="btn-sm ${p.userOverride==='ok'?'active':''}" onclick="setOverride(pobData['${sec}'][${idx}],'${sec}',${idx},'ok')">✅ ใช่ พบ</button>
+                    <button type="button" class="btn-sm ${p.userOverride==='absent'?'active':''}" onclick="setOverride(pobData['${sec}'][${idx}],'${sec}',${idx},'absent')">❌ ไม่พบ</button>
+                    <button type="button" class="btn-sm" onclick="setOverride(pobData['${sec}'][${idx}],'${sec}',${idx},null)">↩ คืนค่า auto</button>
+                </div>
+            </div>`;
+        }
     }
-    if (!html) {
-        html = '<div style="text-align:center;color:#94a3b8;padding:1.5rem">ไม่พบรายชื่อตามตัวกรอง</div>';
-    }
-    document.getElementById('results').innerHTML = html;
+
+    document.getElementById('personList').innerHTML = html ||
+        '<div style="text-align:center;color:#94a3b8;padding:2rem">ไม่พบรายชื่อ</div>';
+
     const hint = document.getElementById('filterResultHint');
-    if (hint) {
-        hint.textContent = (shownTotal < all.length && (document.getElementById('filterCabin').value !== 'ALL' || document.getElementById('filterName').value.trim()))
-            ? `แสดง ${shownTotal} จาก ${all.length} คน` : '';
-    }
+    const cabinQ = document.getElementById('filterCabin').value.trim();
+    const nameQ = document.getElementById('filterName').value.trim();
+    hint.textContent = (cabinQ || nameQ) ? `แสดง ${shown} รายการ` : '';
 }
+
+document.getElementById('filterCabin').addEventListener('input', renderPersonList);
+document.getElementById('filterName').addEventListener('input', renderPersonList);
 </script>
 </body>
 </html>
