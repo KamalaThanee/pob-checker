@@ -4,6 +4,10 @@ __pycache__/
 .env.local
 .venv/
 venv/
+.test-deps/
+.pytest_cache/
+.coverage
+htmlcov/
 .vercel/
 *.log
 .DS_Store

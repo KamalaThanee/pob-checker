@@ -18,10 +18,25 @@
 2. ตั้ง **Environment Variable**: `GEMINI_API_KEY` จาก [Google AI Studio](https://aistudio.google.com/apikey)
 3. ลบ `OPENROUTER_API_KEY` ออกจาก Vercel ได้ (ไม่ใช้แล้ว)
 
-## รันบนเครื่อง
+## รันบนเครื่อง (Windows PowerShell)
 
-```bash
-pip install -r requirements.txt
-set GEMINI_API_KEY=your_key
-uvicorn main:app --reload
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
+python -m uvicorn main:app --reload
 ```
+
+ถ้ามี Python Launcher สามารถใช้ `py -m ...` แทน `python -m ...` ได้
+
+ไม่ต้องตั้ง `GEMINI_API_KEY` สำหรับการเปิดหน้าเว็บ, health check หรือรัน tests
+และห้ามใส่ API key จริงใน repository
+
+## รัน tests
+
+```powershell
+python -m pytest -q
+```
+
+Tests ใช้ mock responses เท่านั้นและจะไม่เรียก Gemini จริง

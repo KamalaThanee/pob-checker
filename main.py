@@ -13,6 +13,7 @@ GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
 HTML_PATH       = Path(__file__).parent / "index.html"
 MAX_IMAGE_BYTES = 4 * 1024 * 1024  # 4 MB after client resize
 GOOGLE_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+SUPPORTED_IMAGE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 _http_client: Optional[httpx.AsyncClient] = None
 _html_cache: Optional[str] = None
@@ -82,6 +83,10 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
+def error_response(message: str, status_code: int) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"error": message})
+
+
 async def call_google(model_id: str, api_key: str, image_b64: str, mime: str) -> str:
     payload = {
         "contents": [{
@@ -138,24 +143,40 @@ async def root():
     return HTMLResponse(content=_html_cache or HTML_PATH.read_text(encoding="utf-8"))
 
 
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.post("/api/read-image")
-async def read_image(files: List[UploadFile] = File(...)):
+async def read_image(files: Optional[List[UploadFile]] = File(None)):
     try:
         if not GEMINI_API_KEY:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "GEMINI_API_KEY is not configured on the server."},
+            return error_response(
+                "GEMINI_API_KEY is not configured on the server.", 500
             )
 
-        image_bytes = await files[0].read()
+        if not files or files[0] is None:
+            return error_response("No image file was uploaded.", 400)
+
+        upload = files[0]
+        mime = upload.content_type or ""
+        if mime not in SUPPORTED_IMAGE_TYPES:
+            return error_response(
+                "Unsupported image type. Use JPEG, PNG, or WebP.", 415
+            )
+
+        image_bytes = await upload.read()
+        if not image_bytes:
+            return error_response("The uploaded image is empty.", 400)
+
         if len(image_bytes) > MAX_IMAGE_BYTES:
-            return JSONResponse(
-                status_code=413,
-                content={"error": f"Image too large ({len(image_bytes)} bytes). Max {MAX_IMAGE_BYTES}."},
+            return error_response(
+                f"Image too large ({len(image_bytes)} bytes). Max {MAX_IMAGE_BYTES}.",
+                413,
             )
 
         b64  = base64.b64encode(image_bytes).decode("ascii")
-        mime = files[0].content_type or "image/jpeg"
 
         last_error = "No models available"
         for model in MODELS:
@@ -171,11 +192,9 @@ async def read_image(files: List[UploadFile] = File(...)):
             except Exception as e:
                 last_error = str(e)
 
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"All Google models failed. Last error: {last_error}"},
+        return error_response(
+            f"All Google models failed. Last error: {last_error}", 500
         )
 
-    except Exception as e:
-        import traceback
-        return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
+    except Exception:
+        return error_response("Unexpected server error.", 500)
