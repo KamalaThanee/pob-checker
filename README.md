@@ -37,6 +37,9 @@ python -m uvicorn main:app --reload
 
 ```powershell
 python -m pytest -q
+node tests/test_matching.js
 ```
 
 Tests ใช้ mock responses เท่านั้นและจะไม่เรียก Gemini จริง
+
+กฎการจับคู่แบบ deterministic และ reason codes อยู่ใน `MATCHING_SPEC.md`

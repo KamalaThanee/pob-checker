@@ -52,6 +52,7 @@ Run tests with:
 
 ```powershell
 python -m pytest -q
+node tests/test_matching.js
 ```
 
 ## Secret handling
@@ -81,11 +82,15 @@ python -m pytest -q
 - Images are resized in the browser and scanned with the existing Gemini prompt
   and model cascade.
 - OCR cabin forms such as `B401A` and `B-401A` normalize to `B-401A`.
-- The frontend classifies records as `ok`, `review`, or `absent` using the
-  existing name and cabin/bed rules.
+- The frontend assigns each logical OCR tag to at most one POB record and
+  classifies records as `ok`, `review`, or `absent` using deterministic rules
+  documented in `MATCHING_SPEC.md`.
+- `ok` requires exact cabin+bed and a unique exact name or safe surname
+  abbreviation. Typos, ambiguity, and conflicting evidence require review.
+- Identical POB records competing for one logical tag are never silently chosen.
 - Manual status overrides and all other application state are browser-only and
   are lost on refresh.
 - `/api/read-image` checks for the Gemini key before processing upload details.
 
 Do not change these accepted behaviors, the Gemini prompt/model order, or the
-Excel matching rules without a separately approved change.
+Excel import rules without a separately approved change.

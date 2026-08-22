@@ -202,7 +202,7 @@ let ocrResults = [];
 let xlsxPromise = null;
 let filterStatus = null;
 let filterSection = null;
-const NAME_MATCH_MIN = 0.55;
+let matchingDiagnostics = { logicalOcrCount: 0, unassignedOcr: [] };
 
 const SECTIONS = [
     { key: 'marine', label: 'MARINE CREW' },
@@ -256,6 +256,7 @@ document.getElementById('excelInput').onchange = async (e) => {
             cabin: cabinId, bed, cabinBed: cabinId + bed, name: colD,
             matchStatus: 'absent', userOverride: null,
             sourceFile: null, reviewReason: null, ocrCabin: null, ocrName: null,
+            matchReasonCode: null, assignedOcrId: null, matchEvidence: null,
         });
     }
     const t = allPeople().length;
@@ -314,7 +315,12 @@ async function processImages() {
     await Promise.all([w(), w()]);
     allPeople().forEach(p => { p.userOverride = null; });
     filterStatus = null; filterSection = null;
-    matchAll();
+    const successfulImages = stats.filter(s => Boolean(s.model)).length;
+    matchAll({
+        totalImages: stats.length,
+        successfulImages,
+        failedImages: stats.length - successfulImages,
+    });
     document.getElementById('debugText').textContent = stats.map(s => s.raw).filter(Boolean).join('\n\n');
     renderImageChips(stats);
     document.getElementById('resultsPanel').classList.remove('hidden');
@@ -330,58 +336,284 @@ function parseCabinParts(cb) {
     const m = n.match(/^([A-Z])(\d+)([A-D])$/);
     return m ? { base: m[1]+m[2], bed: m[3], full: n } : { base: n, bed: '', full: n };
 }
-function nameSimilarity(a, b) {
-    const x = String(a||'').split(/\s+/).filter(Boolean);
-    const y = String(b||'').split(/\s+/).filter(Boolean);
-    if (!x.length || !y.length) return 0;
-    if (x[0] !== y[0] && !y[0].startsWith(x[0]) && !x[0].startsWith(y[0])) return 0;
-    if (x.length >= 2 && y.length >= 2) {
-        const lx = x[x.length-1], ly = y[y.length-1];
-        if (lx === ly || ly.startsWith(lx) || lx.startsWith(ly)) return 1;
-        return 0.65;
-    }
-    return 0.55;
+function normalizeName(s) {
+    return String(s || '').toUpperCase().trim().replace(/\s+/g, ' ');
 }
-function findNameMatchOcr(p) {
-    let best = null, sc = 0;
-    for (const o of ocrResults) {
-        const sim = nameSimilarity(p.name, o.name_tag);
-        if (sim >= NAME_MATCH_MIN && sim > sc) { sc = sim; best = o; }
+function isOneEditApart(a, b) {
+    if (a === b || Math.abs(a.length - b.length) > 1 || Math.min(a.length, b.length) < 5) return false;
+    let i = 0, j = 0, edits = 0;
+    while (i < a.length && j < b.length) {
+        if (a[i] === b[j]) { i++; j++; continue; }
+        if (++edits > 1) return false;
+        if (a.length > b.length) i++;
+        else if (b.length > a.length) j++;
+        else { i++; j++; }
     }
-    return best;
+    if (i < a.length || j < b.length) edits++;
+    return edits === 1;
 }
-function classifyPerson(p) {
-    const pKey = normalizeKey(p.cabinBed);
-    const pParts = parseCabinParts(p.cabinBed);
-    for (const o of ocrResults) {
-        if (normalizeKey(o.cabin_bed) === pKey && nameSimilarity(p.name, o.name_tag) >= NAME_MATCH_MIN)
-            return { status: 'ok', o, reason: null };
-    }
-    const nameHit = findNameMatchOcr(p);
-    if (nameHit && normalizeKey(nameHit.cabin_bed) !== pKey) {
-        const oParts = parseCabinParts(nameHit.cabin_bed);
-        const sameBase = pParts.base === oParts.base;
-        const reason = sameBase && pParts.bed !== oParts.bed
-            ? `ชื่อตรงแต่เตียงไม่ตรง: รูป ${nameHit.cabin_bed} "${nameHit.name_tag}" · POB ${p.cabinBed} "${p.name}"`
-            : `ชื่อตรงแต่ห้องไม่ตรง: รูป ${nameHit.cabin_bed} "${nameHit.name_tag}" · POB ${p.cabinBed} "${p.name}"`;
-        return { status: 'review', o: nameHit, reason };
-    }
-    const occ = ocrResults.find(o => normalizeKey(o.cabin_bed) === pKey);
-    if (occ && nameSimilarity(p.name, occ.name_tag) < NAME_MATCH_MIN)
-        return { status: 'absent', o: null,
-            reason: `ไม่พบชื่อ "${p.name}" ในรูป — ป้าย ${p.cabinBed} เป็น "${occ.name_tag}" (${occ.sourceFile})` };
-    return { status: 'absent', o: null, reason: `ไม่พบชื่อ "${p.name}" ในรูป (POB ${p.cabinBed})` };
+function surnameCompatible(a, b) {
+    if (!a || !b) return false;
+    const shorter = a.length <= b.length ? a : b;
+    const longer = a.length <= b.length ? b : a;
+    return shorter.length >= 2 && longer.startsWith(shorter);
 }
-function matchAll() {
-    for (const sec of Object.keys(pobData))
-        for (const p of pobData[sec]) {
-            const r = classifyPerson(p);
-            p.matchStatus = r.status;
-            p.sourceFile = r.o?.sourceFile ?? null;
-            p.reviewReason = r.reason;
-            p.ocrCabin = r.o?.cabin_bed ?? null;
-            p.ocrName = r.o?.name_tag ?? null;
+function compareNames(a, b) {
+    const left = normalizeName(a), right = normalizeName(b);
+    const x = left.split(' ').filter(Boolean), y = right.split(' ').filter(Boolean);
+    if (!x.length || !y.length) return 'none';
+    if (left === right) return 'exact';
+
+    const firstExact = x[0] === y[0];
+    const xLast = x.length > 1 ? x[x.length - 1] : '';
+    const yLast = y.length > 1 ? y[y.length - 1] : '';
+    const surnameStrong = surnameCompatible(xLast, yLast);
+    if (firstExact && surnameStrong) return 'abbreviation';
+
+    const firstTypo = isOneEditApart(x[0], y[0]);
+    const surnameTypo = firstExact && isOneEditApart(xLast, yLast);
+    if ((firstTypo && surnameStrong) || surnameTypo) return 'typo';
+
+    const firstPrefix = x[0].startsWith(y[0]) || y[0].startsWith(x[0]);
+    if (firstExact || firstPrefix) return 'weak';
+    return 'none';
+}
+function locationEvidence(person, ocr) {
+    const p = parseCabinParts(person.cabinBed), o = parseCabinParts(ocr.cabinBed);
+    if (p.full === o.full) return 'exact';
+    if (p.base && p.base === o.base && p.bed && o.bed && p.bed !== o.bed) return 'wrong_bed';
+    return 'wrong_cabin';
+}
+function buildLogicalOcr(records) {
+    const grouped = new Map();
+    for (const record of records) {
+        const cabinBed = record.cabin_bed || record.cabinBed || '';
+        const name = record.name_tag || record.name || '';
+        const key = `${normalizeKey(cabinBed)}|${normalizeName(name)}`;
+        if (!grouped.has(key)) grouped.set(key, { key, cabinBed, name, observations: [] });
+        grouped.get(key).observations.push(record);
+    }
+    return [...grouped.values()].sort((a, b) => a.key.localeCompare(b.key)).map((item, index) => ({
+        ...item,
+        id: `ocr-${index + 1}`,
+        duplicateCount: item.observations.length,
+        sourceFiles: [...new Set(item.observations.map(o => o.sourceFile).filter(Boolean))].sort(),
+    }));
+}
+function evidenceFor(edge) {
+    if (!edge) return null;
+    return {
+        nameEvidence: edge.nameLevel,
+        locationEvidence: edge.locationLevel,
+        duplicateCount: edge.ocr.duplicateCount,
+        sourceFiles: [...edge.ocr.sourceFiles],
+    };
+}
+function setMatchResult(entry, status, code, reason, edge = null, assigned = false) {
+    const p = entry.person;
+    p.matchStatus = status;
+    p.matchReasonCode = code;
+    p.reviewReason = reason;
+    p.assignedOcrId = assigned && edge ? edge.ocr.id : null;
+    p.matchEvidence = evidenceFor(edge);
+    p.sourceFile = edge?.ocr.sourceFiles.join(', ') || null;
+    p.ocrCabin = edge?.ocr.cabinBed || null;
+    p.ocrName = edge?.ocr.name || null;
+}
+function assignEdge(entry, edge, status, code, reason, assignedPeople, assignedOcr) {
+    setMatchResult(entry, status, code, reason, edge, true);
+    assignedPeople.add(entry.index);
+    assignedOcr.add(edge.ocrIndex);
+}
+function matchAll(scanContext = {}) {
+    const people = allPeople().map((person, index) => ({ person, index }));
+    const logicalOcr = buildLogicalOcr(ocrResults);
+    const edges = [];
+    for (const entry of people) {
+        const p = entry.person;
+        p.matchStatus = 'absent';
+        p.matchReasonCode = null;
+        p.reviewReason = null;
+        p.assignedOcrId = null;
+        p.matchEvidence = null;
+        p.sourceFile = null;
+        p.ocrCabin = null;
+        p.ocrName = null;
+        logicalOcr.forEach((ocr, ocrIndex) => edges.push({
+            personIndex: entry.index,
+            ocrIndex,
+            entry,
+            ocr,
+            nameLevel: compareNames(p.name, ocr.name),
+            locationLevel: locationEvidence(p, ocr),
+        }));
+    }
+
+    const strong = edge => edge.nameLevel === 'exact' || edge.nameLevel === 'abbreviation';
+    const blockedPeople = new Set();
+    const assignedPeople = new Set();
+    const assignedOcr = new Set();
+
+    const duplicatePob = new Map();
+    for (const entry of people) {
+        const key = `${normalizeKey(entry.person.cabinBed)}|${normalizeName(entry.person.name)}`;
+        if (!duplicatePob.has(key)) duplicatePob.set(key, []);
+        duplicatePob.get(key).push(entry);
+    }
+    for (const group of duplicatePob.values()) {
+        if (group.length < 2) continue;
+        const indexes = new Set(group.map(entry => entry.index));
+        const competes = edges.some(edge => indexes.has(edge.personIndex) && edge.locationLevel === 'exact' && strong(edge));
+        if (!competes) continue;
+        for (const entry of group) {
+            setMatchResult(entry, 'review', 'duplicate_pob_record',
+                `ข้อมูล POB ซ้ำที่ ${entry.person.cabinBed} สำหรับ "${entry.person.name}" — ไม่เลือกแถวใดอัตโนมัติ`);
+            blockedPeople.add(entry.index);
         }
+    }
+
+    for (const entry of people) {
+        if (blockedPeople.has(entry.index)) continue;
+        const personEdges = edges.filter(edge => edge.personIndex === entry.index);
+        const atLocation = personEdges.filter(edge => edge.locationLevel === 'exact');
+        const strongAtLocation = atLocation.filter(strong);
+        const distinctLocationNames = new Set(atLocation.map(edge => normalizeName(edge.ocr.name)));
+        const typoAtLocation = atLocation.filter(edge => edge.nameLevel === 'typo');
+        const strongAway = personEdges.filter(edge => edge.locationLevel !== 'exact' && strong(edge));
+        if (distinctLocationNames.size > 1 && strongAtLocation.length) {
+            setMatchResult(entry, 'review', 'conflicting_evidence',
+                `พบป้ายหลายชื่อที่ตำแหน่ง ${entry.person.cabinBed} — ต้องตรวจสอบข้อมูลจากรูป`);
+            blockedPeople.add(entry.index);
+        } else if (!strongAtLocation.length && typoAtLocation.length && strongAway.length) {
+            setMatchResult(entry, 'review', 'conflicting_evidence',
+                `หลักฐานขัดแย้ง: ชื่อคล้ายที่ ${entry.person.cabinBed} แต่พบชื่อตรงในตำแหน่งอื่น — ไม่จับคู่อัตโนมัติ`);
+            blockedPeople.add(entry.index);
+        }
+    }
+
+    const exactStrongByOcr = new Map();
+    for (const edge of edges.filter(edge => edge.locationLevel === 'exact' && strong(edge) && !blockedPeople.has(edge.personIndex))) {
+        if (!exactStrongByOcr.has(edge.ocrIndex)) exactStrongByOcr.set(edge.ocrIndex, []);
+        exactStrongByOcr.get(edge.ocrIndex).push(edge);
+    }
+    for (const candidates of exactStrongByOcr.values()) {
+        if (candidates.length < 2) continue;
+        for (const edge of candidates) {
+            if (blockedPeople.has(edge.personIndex)) continue;
+            setMatchResult(edge.entry, 'review', 'ambiguous_pob_candidates',
+                `ป้าย ${edge.ocr.cabinBed} "${edge.ocr.name}" ตรงกับ POB มากกว่าหนึ่งคน — ไม่เลือกอัตโนมัติ`);
+            blockedPeople.add(edge.personIndex);
+        }
+    }
+
+    for (const entry of people) {
+        if (blockedPeople.has(entry.index)) continue;
+        const candidates = edges.filter(edge => edge.personIndex === entry.index &&
+            edge.locationLevel === 'exact' && strong(edge) && !assignedOcr.has(edge.ocrIndex));
+        if (candidates.length > 1) {
+            setMatchResult(entry, 'review', 'ambiguous_ocr_candidates',
+                `พบป้ายที่เป็นไปได้มากกว่าหนึ่งป้ายสำหรับ ${entry.person.cabinBed} "${entry.person.name}"`);
+            blockedPeople.add(entry.index);
+        } else if (candidates.length === 1) {
+            const edge = candidates[0];
+            const code = edge.nameLevel === 'exact'
+                ? 'exact_location_exact_name' : 'exact_location_abbreviated_name';
+            assignEdge(entry, edge, 'ok', code, null, assignedPeople, assignedOcr);
+        }
+    }
+
+    function assignStrongTier(locationLevel, reasonCode, reasonText) {
+        const available = edges.filter(edge => edge.locationLevel === locationLevel && strong(edge) &&
+            !blockedPeople.has(edge.personIndex) && !assignedPeople.has(edge.personIndex) && !assignedOcr.has(edge.ocrIndex));
+        const byPerson = new Map(), byOcr = new Map();
+        for (const edge of available) {
+            if (!byPerson.has(edge.personIndex)) byPerson.set(edge.personIndex, []);
+            if (!byOcr.has(edge.ocrIndex)) byOcr.set(edge.ocrIndex, []);
+            byPerson.get(edge.personIndex).push(edge);
+            byOcr.get(edge.ocrIndex).push(edge);
+        }
+        for (const candidates of byPerson.values()) {
+            if (candidates.length < 2) continue;
+            const entry = candidates[0].entry;
+            setMatchResult(entry, 'review', 'ambiguous_ocr_candidates',
+                `พบป้ายชื่อที่เป็นไปได้หลายตำแหน่งสำหรับ "${entry.person.name}" — ไม่เลือกอัตโนมัติ`);
+            blockedPeople.add(entry.index);
+        }
+        for (const candidates of byOcr.values()) {
+            const active = candidates.filter(edge => !blockedPeople.has(edge.personIndex));
+            if (active.length < 2) continue;
+            for (const edge of active) {
+                setMatchResult(edge.entry, 'review', 'ambiguous_pob_candidates',
+                    `ป้าย ${edge.ocr.cabinBed} "${edge.ocr.name}" ตรงกับ POB มากกว่าหนึ่งคน — ไม่เลือกอัตโนมัติ`);
+                blockedPeople.add(edge.personIndex);
+            }
+        }
+        for (const edge of available) {
+            if (blockedPeople.has(edge.personIndex) || assignedPeople.has(edge.personIndex) || assignedOcr.has(edge.ocrIndex)) continue;
+            const personCandidates = byPerson.get(edge.personIndex).filter(e => !blockedPeople.has(e.personIndex));
+            const ocrCandidates = byOcr.get(edge.ocrIndex).filter(e => !blockedPeople.has(e.personIndex));
+            if (personCandidates.length !== 1 || ocrCandidates.length !== 1) continue;
+            assignEdge(edge.entry, edge, 'review', reasonCode, reasonText(edge), assignedPeople, assignedOcr);
+        }
+    }
+
+    assignStrongTier('wrong_bed', 'wrong_bed', edge =>
+        `ชื่อตรงแต่เตียงไม่ตรง: รูป ${edge.ocr.cabinBed} "${edge.ocr.name}" · POB ${edge.entry.person.cabinBed} "${edge.entry.person.name}"`);
+    assignStrongTier('wrong_cabin', 'wrong_cabin', edge =>
+        `ชื่อตรงแต่ห้องไม่ตรง: รูป ${edge.ocr.cabinBed} "${edge.ocr.name}" · POB ${edge.entry.person.cabinBed} "${edge.entry.person.name}"`);
+
+    const typoEdges = edges.filter(edge => edge.locationLevel === 'exact' && edge.nameLevel === 'typo' &&
+        !blockedPeople.has(edge.personIndex) && !assignedPeople.has(edge.personIndex) && !assignedOcr.has(edge.ocrIndex));
+    const typoByPerson = new Map(), typoByOcr = new Map();
+    for (const edge of typoEdges) {
+        if (!typoByPerson.has(edge.personIndex)) typoByPerson.set(edge.personIndex, []);
+        if (!typoByOcr.has(edge.ocrIndex)) typoByOcr.set(edge.ocrIndex, []);
+        typoByPerson.get(edge.personIndex).push(edge);
+        typoByOcr.get(edge.ocrIndex).push(edge);
+    }
+    for (const edge of typoEdges) {
+        if (blockedPeople.has(edge.personIndex) || assignedPeople.has(edge.personIndex) || assignedOcr.has(edge.ocrIndex)) continue;
+        if (typoByPerson.get(edge.personIndex).length !== 1 || typoByOcr.get(edge.ocrIndex).length !== 1) {
+            setMatchResult(edge.entry, 'review', 'conflicting_evidence',
+                `ชื่อ OCR ใกล้เคียงแต่มีผู้สมัครหลายรายการ — ไม่จับคู่อัตโนมัติ`, edge, false);
+            blockedPeople.add(edge.personIndex);
+            continue;
+        }
+        assignEdge(edge.entry, edge, 'review', 'conservative_name_typo',
+            `ชื่อ OCR อาจสะกดคลาดเคลื่อนที่ตำแหน่งตรงกัน: รูป "${edge.ocr.name}" · POB "${edge.entry.person.name}"`,
+            assignedPeople, assignedOcr);
+    }
+
+    for (const entry of people) {
+        if (blockedPeople.has(entry.index) || assignedPeople.has(entry.index)) continue;
+        const atLocation = edges.filter(edge => edge.personIndex === entry.index && edge.locationLevel === 'exact');
+        if (atLocation.length) {
+            const edge = atLocation[0];
+            const code = atLocation.length > 1 ? 'conflicting_evidence' : 'location_name_conflict';
+            const reason = atLocation.length > 1
+                ? `พบป้ายหลายชื่อที่ตำแหน่ง ${entry.person.cabinBed} — ต้องตรวจสอบข้อมูลจากรูป`
+                : `ตำแหน่ง ${entry.person.cabinBed} เป็น "${edge.ocr.name}" แต่ POB เป็น "${entry.person.name}"`;
+            setMatchResult(entry, 'review', code, reason, edge, false);
+        } else if (scanContext.totalImages > 0 && scanContext.failedImages > 0) {
+            const allFailed = !scanContext.successfulImages;
+            setMatchResult(entry, 'review', allFailed ? 'ocr_unavailable' : 'partial_ocr_failure',
+                allFailed ? 'OCR ไม่สำเร็จ จึงยังสรุปว่าไม่พบไม่ได้' : 'OCR บางรูปไม่สำเร็จ จึงต้องตรวจสอบรายชื่อนี้');
+        } else {
+            setMatchResult(entry, 'absent', 'no_ocr_match',
+                `ไม่พบชื่อ "${entry.person.name}" ใน OCR จากรูปที่ประมวลผลสำเร็จ (POB ${entry.person.cabinBed})`);
+        }
+    }
+
+    matchingDiagnostics = {
+        logicalOcrCount: logicalOcr.length,
+        unassignedOcr: logicalOcr.filter((_, index) => !assignedOcr.has(index)).map(ocr => ({
+            id: ocr.id,
+            cabinBed: ocr.cabinBed,
+            name: ocr.name,
+            duplicateCount: ocr.duplicateCount,
+            sourceFiles: [...ocr.sourceFiles],
+        })),
+    };
     populateCabinDatalist();
 }
 function effectiveStatus(p) { return p.userOverride ?? p.matchStatus; }

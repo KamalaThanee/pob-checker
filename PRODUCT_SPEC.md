@@ -57,15 +57,20 @@ that succeeded. Empty model output and model errors advance to the next model.
 
 All comparison logic runs in the browser.
 
-- `ok`: normalized cabin+bed matches and the name meets the existing similarity
-  threshold.
-- `review`: the name matches an OCR record but its cabin or bed differs.
-- `absent`: no acceptable name match is found. If the expected bed contains a
-  different OCR name, the explanation includes that occupant.
+- `ok`: a unique logical OCR tag has exact cabin+bed and either an exact name or
+  a unique safe surname abbreviation with an exact first name.
+- `review`: evidence is plausible but needs an operator, including wrong
+  cabin/bed, wrong occupant, conservative typo, duplicate, ambiguity, conflict,
+  or incomplete OCR coverage.
+- `absent`: no reliable match was found in successfully processed supplied
+  images. This does not claim physical absence.
 
-Name matching uses the existing first-name and surname equality/prefix rules.
-OCR records are not consumed after a match, and the behavior is not guaranteed
-to be one-to-one.
+Identical OCR records are grouped while preserving their source observations.
+Each logical OCR tag can be assigned to at most one POB person. A two-letter
+surname abbreviation can contribute only with an exact first name and unique
+candidate set. A one-edit typo requires exact cabin+bed and can produce only
+review. Matching is deterministic and does not make an AI call. Full rules and
+reason codes are documented in `MATCHING_SPEC.md`.
 
 ## Results and controls
 
@@ -75,6 +80,8 @@ to be one-to-one.
 - Per-image tag counts and raw OCR text are available in expandable sections.
 - An operator can temporarily override a person to found or absent and can
   restore the automatic result.
+- Manual overrides do not erase the computed matching reason or evidence and
+  are reset by a new scan.
 - Overrides, imported data, and results are not persisted or exported.
 
 ## API behavior
