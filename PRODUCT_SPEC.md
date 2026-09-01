@@ -78,6 +78,10 @@ reason codes are documented in `MATCHING_SPEC.md`.
 - Section totals are shown for marine, catering, and passenger/operation.
 - Operators can filter by status, section, cabin/bed, and name.
 - Per-image tag counts and raw OCR text are available in expandable sections.
+- If the same normalized name and cabin+bed are detected more than once, an
+  expandable warning lists the duplicated tag, total detections, extra-tag
+  count, and occurrence count for each source image. Detections from different
+  images are intentionally reported as duplicates for manual checking.
 - An operator can temporarily override a person to found or absent and can
   restore the automatic result.
 - Manual overrides do not erase the computed matching reason or evidence and

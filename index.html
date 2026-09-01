@@ -187,6 +187,11 @@
             <div id="imageSummaryRows" class="img-grid"></div>
         </details>
 
+        <details class="card hidden" id="duplicateTagPanel" open>
+            <summary id="duplicateTagSummary">⚠️ ไม่พบป้ายซ้ำ</summary>
+            <div id="duplicateTagRows" style="margin-top:0.65rem"></div>
+        </details>
+
         <details class="card">
             <summary>🔍 Raw OCR (debug)</summary>
             <pre id="debugText"></pre>
@@ -202,7 +207,12 @@ let ocrResults = [];
 let xlsxPromise = null;
 let filterStatus = null;
 let filterSection = null;
-let matchingDiagnostics = { logicalOcrCount: 0, unassignedOcr: [] };
+let matchingDiagnostics = {
+    logicalOcrCount: 0,
+    unassignedOcr: [],
+    duplicateOcr: [],
+    extraDuplicateCount: 0,
+};
 
 const SECTIONS = [
     { key: 'marine', label: 'MARINE CREW' },
@@ -398,6 +408,12 @@ function buildLogicalOcr(records) {
         id: `ocr-${index + 1}`,
         duplicateCount: item.observations.length,
         sourceFiles: [...new Set(item.observations.map(o => o.sourceFile).filter(Boolean))].sort(),
+        occurrences: [...item.observations.reduce((counts, observation) => {
+            const sourceFile = observation.sourceFile || 'ไม่ทราบไฟล์';
+            counts.set(sourceFile, (counts.get(sourceFile) || 0) + 1);
+            return counts;
+        }, new Map())].sort(([a], [b]) => a.localeCompare(b))
+            .map(([sourceFile, count]) => ({ sourceFile, count })),
     }));
 }
 function evidenceFor(edge) {
@@ -604,8 +620,19 @@ function matchAll(scanContext = {}) {
         }
     }
 
+    const duplicateOcr = logicalOcr.filter(ocr => ocr.duplicateCount > 1).map(ocr => ({
+        id: ocr.id,
+        cabinBed: ocr.cabinBed,
+        name: ocr.name,
+        duplicateCount: ocr.duplicateCount,
+        extraCount: ocr.duplicateCount - 1,
+        sourceFiles: [...ocr.sourceFiles],
+        occurrences: ocr.occurrences.map(item => ({ ...item })),
+    }));
     matchingDiagnostics = {
         logicalOcrCount: logicalOcr.length,
+        duplicateOcr,
+        extraDuplicateCount: duplicateOcr.reduce((sum, ocr) => sum + ocr.extraCount, 0),
         unassignedOcr: logicalOcr.filter((_, index) => !assignedOcr.has(index)).map(ocr => ({
             id: ocr.id,
             cabinBed: ocr.cabinBed,
@@ -614,6 +641,7 @@ function matchAll(scanContext = {}) {
             sourceFiles: [...ocr.sourceFiles],
         })),
     };
+    renderDuplicateWarnings();
     populateCabinDatalist();
 }
 function effectiveStatus(p) { return p.userOverride ?? p.matchStatus; }
@@ -636,6 +664,37 @@ function renderImageChips(stats) {
     document.getElementById('imageSummaryRows').innerHTML = stats.map(s =>
         `<div class="img-chip"><span style="opacity:.75;word-break:break-all">${esc(s.fileName)}</span><b>${s.tagCount}</b></div>`
     ).join('');
+}
+
+function renderDuplicateWarnings() {
+    const panel = document.getElementById('duplicateTagPanel');
+    const summary = document.getElementById('duplicateTagSummary');
+    const rows = document.getElementById('duplicateTagRows');
+    const duplicates = matchingDiagnostics.duplicateOcr || [];
+    const extraCount = matchingDiagnostics.extraDuplicateCount || 0;
+
+    if (!duplicates.length) {
+        panel.classList.add('hidden');
+        summary.textContent = '⚠️ ไม่พบป้ายซ้ำ';
+        rows.innerHTML = '';
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    summary.textContent = `⚠️ พบป้ายซ้ำ ${duplicates.length} รายการ · ป้ายเกิน ${extraCount} ป้าย`;
+    rows.innerHTML = duplicates.map(item => {
+        const sources = item.occurrences.map(source =>
+            `${esc(source.sourceFile)} × ${source.count}`
+        ).join(' · ');
+        return `<div class="person-row row-review">
+            <div class="person-top">
+                <span><b>${esc(item.cabinBed)}</b> ${esc(item.name)}</span>
+                <span>⚠️</span>
+            </div>
+            <div class="person-meta">พบ ${item.duplicateCount} ครั้ง · ป้ายเกิน ${item.extraCount} ป้าย</div>
+            <div class="person-meta" style="color:#fbbf24">↳ รูป: ${sources}</div>
+        </div>`;
+    }).join('');
 }
 
 function setStatusFilter(st) {

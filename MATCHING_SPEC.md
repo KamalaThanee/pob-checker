@@ -106,6 +106,13 @@ sorted source-file list. Identical POB entries competing for that tag receive
 `duplicate_pob_record`; neither row is selected. Similar POB candidates or OCR
 candidates receive the appropriate ambiguity reason.
 
+Every repeated observation of the same normalized cabin+bed and name is also
+reported to the operator as a duplicate, whether it came from the same image or
+different images. The warning shows the total observations, the number of extra
+tags beyond the first logical tag, and occurrence counts by source filename.
+Repeated observations never add assignment capacity: the logical tag can still
+be assigned to at most one POB person.
+
 ## Scan reliability
 
 If all image OCR requests fail, otherwise-unmatched people receive

@@ -66,6 +66,14 @@ function loadMatchingApp() {
                     ? null
                     : JSON.parse(JSON.stringify(matchingDiagnostics));
             },
+            renderDuplicateWarningsForTest() {
+                if (typeof renderDuplicateWarnings !== 'function') return null;
+                renderDuplicateWarnings();
+                return {
+                    summary: document.getElementById('duplicateTagSummary').textContent,
+                    html: document.getElementById('duplicateTagRows').innerHTML,
+                };
+            },
         };
     `, sandbox);
     return sandbox.__matchingTestApi;
@@ -255,6 +263,55 @@ test('target: duplicate identical OCR tags become one logical tag with all sourc
     assert.equal(result.matchEvidence.duplicateCount, 2);
     assert.deepEqual(Array.from(result.matchEvidence.sourceFiles), ['board-1.jpg', 'board-2.jpg']);
     assert.equal(diagnostics.logicalOcrCount, 1);
+});
+
+test('validation: duplicate tag across different images is reported as extra capacity', () => {
+    const app = loadMatchingApp();
+    app.setData(
+        [person('B401A', 'AKARANET SIRIPORN')],
+        [tag('B-401A', 'AKARANET SI', 'board-1.jpg'), tag('B-401A', 'AKARANET SI', 'board-2.jpg')],
+    );
+    app.match();
+    const diagnostics = app.diagnostics();
+    assert.equal(diagnostics.extraDuplicateCount, 1);
+    assert.equal(diagnostics.duplicateOcr.length, 1);
+    assert.deepEqual(Array.from(diagnostics.duplicateOcr[0].occurrences, item => [item.sourceFile, item.count]), [
+        ['board-1.jpg', 1],
+        ['board-2.jpg', 1],
+    ]);
+});
+
+test('validation: repeated tag in the same image reports every extra occurrence', () => {
+    const app = loadMatchingApp();
+    app.setData(
+        [person('B401A', 'AKARANET SIRIPORN')],
+        [
+            tag('B-401A', 'AKARANET SI', 'board-1.jpg'),
+            tag('B-401A', 'AKARANET SI', 'board-1.jpg'),
+            tag('B-401A', 'AKARANET SI', 'board-1.jpg'),
+        ],
+    );
+    app.match();
+    const diagnostics = app.diagnostics();
+    assert.equal(diagnostics.extraDuplicateCount, 2);
+    assert.equal(diagnostics.duplicateOcr[0].occurrences[0].count, 3);
+});
+
+test('validation: duplicate warning shows person, cabin, count, extras, and source files', () => {
+    const app = loadMatchingApp();
+    app.setData(
+        [person('B401A', 'AKARANET SIRIPORN')],
+        [tag('B-401A', 'AKARANET SI', 'board-1.jpg'), tag('B-401A', 'AKARANET SI', 'board-2.jpg')],
+    );
+    app.match();
+    const warning = app.renderDuplicateWarningsForTest();
+    assert.match(warning.summary, /ป้ายซ้ำ 1 รายการ/);
+    assert.match(warning.summary, /ป้ายเกิน 1 ป้าย/);
+    assert.match(warning.html, /B-401A/);
+    assert.match(warning.html, /AKARANET SI/);
+    assert.match(warning.html, /พบ 2 ครั้ง/);
+    assert.match(warning.html, /board-1\.jpg/);
+    assert.match(warning.html, /board-2\.jpg/);
 });
 
 test('target: duplicate OCR names at distinct exact locations stay independently assignable', () => {

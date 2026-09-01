@@ -88,6 +88,9 @@ node tests/test_matching.js
 - `ok` requires exact cabin+bed and a unique exact name or safe surname
   abbreviation. Typos, ambiguity, and conflicting evidence require review.
 - Identical POB records competing for one logical tag are never silently chosen.
+- Repeated OCR observations of the same normalized name and cabin+bed are shown
+  as duplicate-tag warnings even across different images, but still provide
+  assignment capacity for only one POB person.
 - Manual status overrides and all other application state are browser-only and
   are lost on refresh.
 - `/api/read-image` checks for the Gemini key before processing upload details.
