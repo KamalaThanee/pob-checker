@@ -189,6 +189,14 @@ test('target: unique two-letter surname abbreviation is ok only at exact cabin a
     assert.equal(result.matchReasonCode, 'exact_location_abbreviated_name');
 });
 
+test('target: invisible Unicode characters do not break a valid surname abbreviation', () => {
+    const app = loadMatchingApp();
+    app.setData([person('B438A', 'TEERAWAT KUFAMSANMUANG')], [tag('B-438A', 'TEERAWAT K\u200BU')]);
+    const result = app.match()[0];
+    assert.equal(result.matchStatus, 'ok');
+    assert.equal(result.matchReasonCode, 'exact_location_abbreviated_name');
+});
+
 test('target: competing POB surname candidates prevent abbreviation from becoming ok', () => {
     const app = loadMatchingApp();
     app.setData(

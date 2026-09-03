@@ -347,7 +347,10 @@ function parseCabinParts(cb) {
     return m ? { base: m[1]+m[2], bed: m[3], full: n } : { base: n, bed: '', full: n };
 }
 function normalizeName(s) {
-    return String(s || '').toUpperCase().trim().replace(/\s+/g, ' ');
+    return String(s || '')
+        .normalize('NFKC')
+        .replace(/[\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .toUpperCase().trim().replace(/\s+/g, ' ');
 }
 function isOneEditApart(a, b) {
     if (a === b || Math.abs(a.length - b.length) > 1 || Math.min(a.length, b.length) < 5) return false;
