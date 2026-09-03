@@ -197,6 +197,20 @@ test('target: invisible Unicode characters do not break a valid surname abbrevia
     assert.equal(result.matchReasonCode, 'exact_location_abbreviated_name');
 });
 
+test('target: trailing punctuation does not break valid surname abbreviations', () => {
+    for (const [cabinBed, pobName, ocrName] of [
+        ['B412B', 'NORATHAM DUSADEETHAMMO', 'NORATHAM DU.'],
+        ['B412C', 'CHAKKAPHON DAENGRUEA', 'CHAKKAPHON DA.'],
+        ['B412D', 'WEERAKON BOONTA', 'WEERAKON BO.'],
+    ]) {
+        const app = loadMatchingApp();
+        app.setData([person(cabinBed, pobName)], [tag(cabinBed, ocrName)]);
+        const result = app.match()[0];
+        assert.equal(result.matchStatus, 'ok');
+        assert.equal(result.matchReasonCode, 'exact_location_abbreviated_name');
+    }
+});
+
 test('target: competing POB surname candidates prevent abbreviation from becoming ok', () => {
     const app = loadMatchingApp();
     app.setData(

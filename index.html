@@ -350,6 +350,7 @@ function normalizeName(s) {
     return String(s || '')
         .normalize('NFKC')
         .replace(/[\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/[.,;:]+(?=\s|$)/g, '')
         .toUpperCase().trim().replace(/\s+/g, ' ');
 }
 function isOneEditApart(a, b) {
